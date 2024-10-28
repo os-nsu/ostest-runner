@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="17" time="15.866" timestamp="2024-10-22T10:44:46.666665+07:00" hostname="hp"><testcase classname="tests.test_build" name="test_successful_make_clean" time="0.487" /><testcase classname="tests.test_build" name="test_successful_compilation" time="0.477" /><testcase classname="tests.test_build" name="test_library_symbols" time="0.015" /><testcase classname="tests.test_build" name="test_makefile_exists" time="0.000" /><testcase classname="tests.test_build" name="test_project_structure" time="0.000" /><testcase classname="tests.test_build" name="test_compilation_without_warnings" time="0.475" /><testcase classname="tests.test_executable" name="test_run_without_arguments" time="1.003" /><testcase classname="tests.test_executable" name="test_run_with_help_argument" time="1.004"><failure message="Failed: Proxy not finished in 1 seconds.">steps/proxy_steps.py:25: in run_proxy_with_args
+    result = subprocess.run([proxy_bin_name] + args, cwd=project_dir, check=False, capture_output=True, text=True, timeout=timeout)
+/usr/lib/python3.12/subprocess.py:550: in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+/usr/lib/python3.12/subprocess.py:1209: in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+/usr/lib/python3.12/subprocess.py:2116: in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+/usr/lib/python3.12/subprocess.py:1253: in _check_timeout
+    raise TimeoutExpired(
+E   subprocess.TimeoutExpired: Command '['/home/borodun/git/os-nsu/proxy-anton/develop/install/proxy', '--help']' timed out after 1 seconds
+
+During handling of the above exception, another exception occurred:
+tests/test_executable.py:34: in test_run_with_help_argument
+    result = run_proxy_with_args(project_dir=project_dir, proxy_bin_name=proxy_bin_name, args=['--help'], timeout=proxy_timeout)
+steps/proxy_steps.py:27: in run_proxy_with_args
+    pytest.fail(f"Proxy not finished in {timeout} seconds.")
+E   Failed: Proxy not finished in 1 seconds.</failure></testcase><testcase classname="tests.test_executable" name="test_run_with_invalid_arguments" time="1.003"><failure message="Failed: Proxy not finished in 1 seconds.">steps/proxy_steps.py:25: in run_proxy_with_args
+    result = subprocess.run([proxy_bin_name] + args, cwd=project_dir, check=False, capture_output=True, text=True, timeout=timeout)
+/usr/lib/python3.12/subprocess.py:550: in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+/usr/lib/python3.12/subprocess.py:1209: in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+/usr/lib/python3.12/subprocess.py:2116: in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+/usr/lib/python3.12/subprocess.py:1253: in _check_timeout
+    raise TimeoutExpired(
+E   subprocess.TimeoutExpired: Command '['/home/borodun/git/os-nsu/proxy-anton/develop/install/proxy', '--invalid_arg']' timed out after 1 seconds
+
+During handling of the above exception, another exception occurred:
+tests/test_executable.py:46: in test_run_with_invalid_arguments
+    result = run_proxy_with_args(project_dir, proxy_bin_name, ['--invalid_arg'], timeout=proxy_timeout)
+steps/proxy_steps.py:27: in run_proxy_with_args
+    pytest.fail(f"Proxy not finished in {timeout} seconds.")
+E   Failed: Proxy not finished in 1 seconds.</failure></testcase><testcase classname="tests.test_executable" name="test_execution_with_sanitizers" time="1.480" /><testcase classname="tests.test_executable" name="test_proxy_termination_on_signal[2-SIGINT]" time="1.004" /><testcase classname="tests.test_executable" name="test_proxy_termination_on_signal[3-SIGQUIT]" time="1.146" /><testcase classname="tests.test_executable" name="test_proxy_termination_on_signal[11-SIGSEGV]" time="1.134" /><testcase classname="tests.test_logger" name="test_log_file_creation" time="0.478"><failure message="AssertionError: Log file wasn't created after start proxy.&#10;assert False&#10; +  where False = check_log_file_exists('/var/log/proxy.log')">tests/test_logger.py:37: in test_log_file_creation
+    assert check_log_file_exists(log_file_path), "Log file wasn't created after start proxy."
+E   AssertionError: Log file wasn't created after start proxy.
+E   assert False
+E    +  where False = check_log_file_exists('/var/log/proxy.log')</failure></testcase><testcase classname="tests.test_logger" name="test_log_contains_message[ready to accept connections-0]" time="2.008"><failure message="AssertionError: Message 'ready to accept connections' wasn't found in log.&#10;assert None is not None">tests/test_logger.py:50: in test_log_contains_message
+    assert new_position is not None, f"Message '{message}' wasn't found in log."
+E   AssertionError: Message 'ready to accept connections' wasn't found in log.
+E   assert None is not None</failure></testcase><testcase classname="tests.test_logger" name="test_log_contains_message[new client connected-0]" time="2.009"><failure message="AssertionError: Message 'new client connected' wasn't found in log.&#10;assert None is not None">tests/test_logger.py:50: in test_log_contains_message
+    assert new_position is not None, f"Message '{message}' wasn't found in log."
+E   AssertionError: Message 'new client connected' wasn't found in log.
+E   assert None is not None</failure></testcase><testcase classname="tests.test_logger" name="test_log_messages_in_order" time="2.010"><failure message="AssertionError: Message 'ready to accept connections' wasn't found in log.&#10;assert None is not None">tests/test_logger.py:64: in test_log_messages_in_order
+    assert new_position is not None, f"Message '{message}' wasn't found in log."
+E   AssertionError: Message 'ready to accept connections' wasn't found in log.
+E   assert None is not None</failure></testcase></testsuite></testsuites>
