@@ -127,7 +127,7 @@ def start_testing(config, task):
 
 	result = {}
 
-	result = parse_xml_result(xml_path1)
+	result = parse_xml_result(xml_path)
 
 	result["attempt"] = task_json["attempt"]
 
