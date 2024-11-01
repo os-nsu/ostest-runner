@@ -1,2 +1,5 @@
 .pytest_cache
 **/__pycache__
+labs
+tests/tests
+tests/reports/report_*

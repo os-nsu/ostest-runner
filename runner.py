@@ -11,6 +11,8 @@ import signal
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import xml.etree.ElementTree as ET
+import subprocess
+import os
 
 stop_event = threading.Event()
 jobs_pool = None
@@ -66,7 +68,7 @@ def parse_xml_result(report_path):
 	return result
 
 
-def start_testing(config, task):
+def start_testing_mock(config, task): ## For backend testing
 	print(f"Received task")
 	task_json = task.json()
 
@@ -88,6 +90,51 @@ def start_testing(config, task):
 	print(f"post body: {result}")
 
 	post_results(result)
+
+
+def run_test(task_json):
+	project_dir = task_json["repositoryUrl"].split("/")[-1].rstrip(".git")
+	user = task_json["repositoryUrl"].split("/")[-2]
+	args = ["./run_test.sh " + 
+	" -p " + project_dir +
+	" -u " + user +
+	" -a " + str(task_json["attempt"]) +
+	" -r " + task_json["repositoryUrl"] +
+	" -b " + task_json["branch"] +
+	" -l " + str(task_json["laboratoryNumber"])]
+	connectedTests = task_json["connectedTests"]
+	for test in connectedTests:
+		args[0]+= " -c " + test
+	print(args)
+
+	res = subprocess.run(args, shell=True, check=False, capture_output=False)
+	if res.returncode != 0:
+		print(f"run_test.sh finished with no-zero return code\nattempt {task_json["attempt"]}, repo {task_json["repositoryUrl"]}")
+		if res.stderr:
+			print(f"run_test.sh has stderr '{res.stderr}'")
+		return None
+	return f"tests/reports/report_{user}/{project_dir}/report_attempt_{task_json["attempt"]}.xml"
+
+def start_testing(config, task):
+	print(f"Received task")
+	task_json = task.json()
+
+	xml_path = run_test(task_json)
+
+	if xml_path is None:
+		## TODO: create task resubmission or failure message send
+		return 
+
+	result = {}
+
+	result = parse_xml_result(xml_path1)
+
+	result["attempt"] = task_json["attempt"]
+
+	print(f"post body: {result}")
+
+	post_results(result)
+
 
 def post_results(result):
 	response = requests.post(config.backend_url + post_task_api_path, json=result)
@@ -126,7 +173,10 @@ def main_loop(config):
 		if len(futures) < config.concurrent:
 			task = get_task(config)
 			if task:
-				futures.append(jobs_pool.submit(start_testing, config, task))
+				if config.mock:
+					futures.append(jobs_pool.submit(start_testing_mock, config, task)) # for backend testing
+				else:
+					futures.append(jobs_pool.submit(start_testing, config, task))
 		else:
 			print(f"\nNo space for new job")
 
@@ -144,12 +194,14 @@ def main_loop(config):
 
 def parse_args():
 	parser = argparse.ArgumentParser(description="Run parallel make checks with various tools")
+	parser.add_argument("--mock", action="store_true") ## For backend testing
 	parser.add_argument("--backend-url", default="http://localhost:5000")
 	parser.add_argument("--concurrent", type=int, default=2)
 	parser.add_argument("--check-interval", type=int, default=5)
 	args = parser.parse_args()
 
 	config = Config()
+	config.mock = args.mock ## For backend testing
 	config.backend_url = args.backend_url
 	config.concurrent = args.concurrent
 	config.check_interval = args.check_interval
