@@ -2,4 +2,4 @@
 **/__pycache__
 labs
 tests/tests
-tests/reports/report_*
+tests/reports/*

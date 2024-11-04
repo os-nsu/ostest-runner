@@ -74,7 +74,7 @@ mkdir report_$user_name
 cd report_$user_name
 mkdir $project_folder_name
 cd $cwd
-#Clone tests 
+#Clone tests
 cd tests;
 git clone https://github.com/os-nsu/tests.git;
 cd tests;

@@ -13,6 +13,7 @@ import threading
 import xml.etree.ElementTree as ET
 import subprocess
 import os
+from run_test import run_test
 
 stop_event = threading.Event()
 jobs_pool = None
@@ -77,8 +78,8 @@ def start_testing_mock(config, task): ## For backend testing
 	result = {}
 
 	## For testing
-	xml_path1 = "tests/reports/passed_report.xml"
-	xml_path2 = "tests/reports/failed_report.xml"
+	xml_path1 = "mock_server/reports/passed_report.xml"
+	xml_path2 = "mock_server/reports/failed_report.xml"
 
 	if task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-grisha.git":
 		result = parse_xml_result(xml_path1)
@@ -92,38 +93,15 @@ def start_testing_mock(config, task): ## For backend testing
 	post_results(result)
 
 
-def run_test(task_json):
-	project_dir = task_json["repositoryUrl"].split("/")[-1].rstrip(".git")
-	user = task_json["repositoryUrl"].split("/")[-2]
-	args = ["./run_test.sh " + 
-	" -p " + project_dir +
-	" -u " + user +
-	" -a " + str(task_json["attempt"]) +
-	" -r " + task_json["repositoryUrl"] +
-	" -b " + task_json["branch"] +
-	" -l " + str(task_json["laboratoryNumber"])]
-	connectedTests = task_json["connectedTests"]
-	for test in connectedTests:
-		args[0]+= " -c " + test
-	print(args)
-
-	res = subprocess.run(args, shell=True, check=False, capture_output=False)
-	if res.returncode != 0:
-		print(f"run_test.sh finished with no-zero return code\nattempt {task_json["attempt"]}, repo {task_json["repositoryUrl"]}")
-		if res.stderr:
-			print(f"run_test.sh has stderr '{res.stderr}'")
-		return None
-	return f"tests/reports/report_{user}/{project_dir}/report_attempt_{task_json["attempt"]}.xml"
-
 def start_testing(config, task):
 	print(f"Received task")
 	task_json = task.json()
 
-	xml_path = run_test(task_json)
+	xml_path = run_test(task_json, stop_event)
 
 	if xml_path is None:
 		## TODO: create task resubmission or failure message send
-		return 
+		return
 
 	result = {}
 
@@ -174,7 +152,7 @@ def main_loop(config):
 			task = get_task(config)
 			if task:
 				if config.mock:
-					futures.append(jobs_pool.submit(start_testing_mock, config, task)) # for backend testing
+					futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
 				else:
 					futures.append(jobs_pool.submit(start_testing, config, task))
 		else:
