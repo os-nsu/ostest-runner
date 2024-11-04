@@ -3,6 +3,7 @@ import shutil
 import os
 import threading
 import time
+import signal
 
 def stop_event_watcher(proc, stop_event, wait_intervals, timeout = 0, message = ""):
     wait = True
@@ -17,25 +18,28 @@ def stop_event_watcher(proc, stop_event, wait_intervals, timeout = 0, message = 
         if timeout != 0 and time.time() - start_time > timeout:
             print(f"Stop {message} due to timeout")
             wait = False
-            proc.send_signal()
-            return False
+            proc.send_signal(signal.SIGINT)
+            proc.wait()
+            return False, proc.stdout, proc.stderr
         if stop_event.is_set():
             print(f"Stop {message} due to signal recieve")
             wait = False
-            proc.send_signal()
-            return False
-    return True
+            proc.send_signal(signal.SIGINT)
+            proc.wait()
+            return False, proc.stdout, proc.stderr
+    return True, proc.stdout, proc.stderr
 
 def start_with_signal_watch(args, cwd, stop_event, clean_up, message = ""):
     try:
         proc = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except Exception as e:
         print(f"Can't start {message}: {e}")
-        return False
-    if not stop_event_watcher(proc, stop_event, 0.01, message = message):
+        return False, None, None
+    is_good, out, err = stop_event_watcher(proc, stop_event, 0.01, message = message)
+    if not is_good:
         clean_up()
-        return False
-    return True
+        return False, out, err
+    return True, out, err
 
 def get_parameters(task_json):
     return {
@@ -60,7 +64,8 @@ def clone_repo(params, stop_event, cleaners):
             "--branch",
             params["branch"]]
     cwd = params["dir_path"] + f"labs/{params["user"]}/"
-    if not start_with_signal_watch(args, cwd, stop_event, clean_up, "git clone repo"):
+    is_good, _, _ = start_with_signal_watch(args, cwd, stop_event, clean_up, "git clone repo")
+    if not is_good:
         return None
     return f"labs/{params["user"]}/{params["project_dir"]}"
 
@@ -81,7 +86,8 @@ def clone_test(params, stop_event, cleaners):
         "https://github.com/os-nsu/tests.git"
     ]
     cwd = params["dir_path"] + tests_dir
-    if not start_with_signal_watch(args, cwd, stop_event, clean_up, "git clone tests"):
+    is_good, _, _ = start_with_signal_watch(args, cwd, stop_event, clean_up, "git clone tests")
+    if not is_good:
         return None
     return f"{tests_dir}/tests"
 
@@ -100,10 +106,6 @@ def pip_install(tests_dir):
         print(f"Can't start pip: {e}")
         return False
 
-def clean_up_cleaners(cleaners):
-    for i in cleaners:
-        i()
-
 def tests(params, stop_event, repo_dir, reports_dir, tests_dir, cleaners):
     clean_up = lambda : None
     cleaners.append(clean_up)
@@ -113,20 +115,43 @@ def tests(params, stop_event, repo_dir, reports_dir, tests_dir, cleaners):
         f"../../{repo_dir}",
         f"--junit-xml=../../{reports_dir}/report_attempt_{params["attempt"]}.xml"
     ]
-    if not start_with_signal_watch(args, params["dir_path"] + tests_dir, stop_event, clean_up, "tests run"):
+    is_good, out, err = start_with_signal_watch(args, params["dir_path"] + tests_dir, stop_event, clean_up, "tests run")
+    try:
+        with open(f"{reports_dir}/stdout_output_{params["attempt"]}", "w") as outfile:
+            outfile.write(out.read())
+    except IOError:
+        print(f"Error while writing {report_dir}/stdout_output_{params["attempt"]} file")
+        return None
+    except OSError:
+        print(f"Cannot open {report_dir}/stdout_output_{params["attempt"]} file")
+        return None
+    if not is_good:
+        try:
+            with open(f"{reports_dir}/stdout_output_{params["attempt"]}", "w") as outfile:
+                outfile.write(err.read())
+        except IOError:
+            print(f"Error while writing {report_dir}/stderr_output_{params["attempt"]} file")
+            return None
+        except OSError:
+            print(f"Cannot open {report_dir}/stderr_output_{params["attempt"]} file")
+            return None
         return None
     return f"{reports_dir}/report_attempt_{params["attempt"]}.xml"
 
+def clean_up_cleaners(cleaners):
+    for i in cleaners:
+        i()
 
 def run_test(task_json, stop_event):
     params = get_parameters(task_json)
     cleaners = []
+    report_folder_dir = create_report_folder(params)
+
     repo_dir = clone_repo(params, stop_event, cleaners)
     if repo_dir is None or stop_event.is_set():
         print(f"repo_dir: {repo_dir}, stop_event {stop_event.is_set()}")
         clean_up_cleaners(cleaners)
         return None
-    report_folder_dir = create_report_folder(params)
     tests_dir = clone_test(params, stop_event, cleaners)
     if tests_dir is None or stop_event.is_set():
         print(f"tests_dir: {tests_dir}, stop_event {stop_event.is_set()}")
