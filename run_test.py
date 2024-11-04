@@ -12,7 +12,7 @@ def stop_event_watcher(proc, stop_event, wait_intervals, timeout = 0, message = 
         if proc.poll() is not None:
             #if proc.returncode != 0:   ### Tests exit with non-zero codes
             #    print(f"Error in {message}:\n{proc.stderr.read()}")
-            #    return None
+            #    return False
             wait = False
         if timeout != 0 and time.time() - start_time > timeout:
             print(f"Stop {message} due to timeout")
