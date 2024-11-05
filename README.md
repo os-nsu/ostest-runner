@@ -14,7 +14,7 @@ Will start asking backend for new tasks.
 ### Start mock backend
 
 ```
-flask --app tests/test_backend run
+flask --app mock_server/test_backend run
 ```
 
 
