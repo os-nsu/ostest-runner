@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import random
 
 def parse_xml_result(report_path):
 	result = {}
@@ -36,6 +37,20 @@ def parse_xml_result(report_path):
 		test_results.append(test_result)
 
 	attempt_result["testCases"] = test_results
+
+	result["testResults"] = attempt_result
+	return result
+
+def parse_error_result(error): ## TODO: Check contract
+	result = {}
+	attempt_result = {}
+	test_results = []
+
+	attempt_result["isPassed"] = False
+	attempt_result["isError"] = True
+	attempt_result["errorDetails"] = f"{error}"
+	attempt_result["duration"] = 0
+	attempt_result["testCases"] = []
 
 	result["testResults"] = attempt_result
 	return result

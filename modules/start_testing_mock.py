@@ -1,7 +1,9 @@
-
+import logging
+from modules.parse_result import parse_xml_result
+from modules.network import post_results
 
 def start_testing_mock(config, task): ## For backend testing
-	print(f"Received task")
+	logging.info(f"Received task")
 	task_json = task.json()
 
 	## TODO: Execute run_test.sh
@@ -19,6 +21,6 @@ def start_testing_mock(config, task): ## For backend testing
 
 	result["attempt"] = task_json["attempt"]
 
-	print(f"post body: {result}")
+	logging.info(f"post body: {result}")
 
-	post_results(result)
+	post_results(config, result)
