@@ -57,8 +57,8 @@ def get_parameters(task_json, worker_num):
 	}
 
 def clone_repo(params, stop_event, cleaners):
-	os.makedirs(f"labs/{params["user"]}/{params["worker_num"]}/", exist_ok=True)
-	clean_up = lambda: shutil.rmtree(f"labs/{params["user"]}/{params["worker_num"]}/{params["project_dir"]}", ignore_errors=True)
+	os.makedirs(f"labs/{params["worker_num"]}/{params["user"]}/", exist_ok=True)
+	clean_up = lambda: shutil.rmtree(f"labs/{params["worker_num"]}/{params["user"]}/{params["project_dir"]}", ignore_errors=True)
 	cleaners.append(clean_up)
 	clean_up()
 	args = ["git",
@@ -66,14 +66,14 @@ def clone_repo(params, stop_event, cleaners):
 			params["repositoryUrl"],
 			"--branch",
 			params["branch"]]
-	cwd = params["dir_path"] + f"labs/{params["user"]}/{params["worker_num"]}/"
+	cwd = params["dir_path"] + f"labs/{params["worker_num"]}/{params["user"]}/"
 	is_good, _, _ = start_with_signal_watch(args, cwd, stop_event, clean_up, "git clone repo")
 	if not is_good:
 		raise RuntimeError(f"Clone repo error")
-	return f"labs/{params["user"]}/{params["project_dir"]}"
+	return f"labs/{params["worker_num"]}/{params["user"]}/{params["project_dir"]}"
 
 def create_report_folder(params):
-	report_dir = f"tests/reports/{params["user"]}/{params["worker_num"]}/{params["project_dir"]}"
+	report_dir = f"tests/reports/{params["worker_num"]}/{params["user"]}/{params["project_dir"]}"
 	os.makedirs(report_dir, exist_ok=True)
 	return report_dir
 
