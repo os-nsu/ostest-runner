@@ -20,11 +20,7 @@ from modules.network import get_task
 from modules.network import post_results
 
 stop_event = threading.Event()
-jobs_pool = None
 is_in_loop = False
-
-worker_slots_lock = threading.Lock()
-worker_slots = None
 
 class Config(object):
 	pass
@@ -37,26 +33,7 @@ def signal_handler(signum, frame):
 		is_in_loop = False
 		raise KeyboardInterrupt("Stop sleeping")
 
-def getWorkerNum():
-	global worker_slots_lock
-	global worker_slots
-	worker_num = 0
-	with worker_slots_lock:
-		if worker_slots is None:
-			worker_slots = [False for i in range(config.concurrent)]
-		for idx, isOccupied in enumerate(worker_slots):
-			if isOccupied:
-				continue
-			worker_num = idx
-			break
-		worker_slots[worker_num] = True
-	return worker_num
-
-def releaseWorkerNum(worker_num):
-	with worker_slots_lock:
-		worker_slots[worker_num] = False
-
-def start_testing(config, task):
+def start_testing(config, task, worker_num):
 	worker_num = getWorkerNum()
 
 	logging.info(f"Received task")
@@ -86,10 +63,9 @@ def main_loop(config):
 
 	futures = []
 
-	global jobs_pool
 	global is_in_loop
 	jobs_pool = ThreadPoolExecutor(max_workers=config.concurrent)
-
+	worker_num = 0
 	while running:
 		try:
 			if stop_event.is_set():
@@ -102,7 +78,8 @@ def main_loop(config):
 					if config.mock:
 						futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
 					else:
-						futures.append(jobs_pool.submit(start_testing, config, task))
+						futures.append(jobs_pool.submit(start_testing, config, task, worker_num))
+						worker_num = (worker_num + 1) % config.concurrent
 			else:
 				logging.info(f"\nNo space for new job")
 
