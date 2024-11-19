@@ -16,16 +16,15 @@ def stop_event_watcher(proc, stop_event, wait_intervals, timeout = 0, message = 
 			#if proc.returncode != 0:   ### Tests exit with non-zero codes
 			#	logging.error(f"Error in {message}:\n{proc.stderr.read()}")
 			#	return False, proc.stdout, proc.stderr
+			proc.wait()
 			wait = False
 		if timeout != 0 and time.time() - start_time > timeout:
 			logging.error(f"Stop {message} due to timeout")
-			wait = False
 			proc.send_signal(signal.SIGINT)
 			proc.wait()
 			return False, proc.stdout, proc.stderr
 		if stop_event.is_set():
 			logging.info(f"Stop {message} due to signal recieve")
-			wait = False
 			proc.send_signal(signal.SIGINT)
 			proc.wait()
 			raise KeyboardInterrupt("Stop signal recieved")
