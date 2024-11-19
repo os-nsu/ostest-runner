@@ -68,10 +68,10 @@ def start_testing(config, task):
 		xml_path = run_test(task_json, stop_event, worker_num)
 		result = parse_xml_result(xml_path)
 	except RuntimeError as e:
-		logger.Error(f"run_test exited with due to {e}")
+		logging.error(f"run_test exited with due to {e}")
 		result = parse_error_result(e)
 	except KeyboardInterrupt as e:
-		logger.info(f"run_test exited with due to {e}")
+		logging.info(f"run_test exited with due to {e}")
 		return
 
 	result["attempt"] = task_json["attempt"]

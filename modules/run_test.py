@@ -155,11 +155,11 @@ def run_test(task_json, stop_event, worker_num):
 		pip_install(tests_dir)
 		report_file_name = tests(params, stop_event, repo_dir, report_folder_dir, tests_dir, cleaners)
 	except RuntimeError as e:
-		logger.error(f"Error while running tests: {e}")
+		logging.error(f"Error while running tests: {e}")
 		clean_up_cleaners(cleaners)
 		raise RuntimeError from e
 	except KeyboardInterrupt as e:
-		logger.info(f"Testing stopped due to: {e}")
+		logging.info(f"Testing stopped due to: {e}")
 		clean_up_cleaners(cleaners)
 		raise KeyboardInterrupt from e
 	return report_file_name
