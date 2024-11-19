@@ -72,23 +72,30 @@ def main_loop(config):
 				running = False
 				continue
 			is_in_loop = True
-			if len(futures) < config.concurrent:
+			while len(futures) < config.concurrent:
 				task = get_task(config)
-				if task:
-					if config.mock:
-						futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
-					else:
-						futures.append(jobs_pool.submit(start_testing, config, task, worker_num))
-						worker_num = (worker_num + 1) % config.concurrent
-			else:
+				if not task:
+					break
+				if config.mock:
+					futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
+				else:
+					futures.append(jobs_pool.submit(start_testing, config, task, worker_num))
+					worker_num = (worker_num + 1) % config.concurrent
+			if len(futures) == config.concurrent:
 				logging.info(f"\nNo space for new job")
+			if len(futures) < config.concurrent:
+				logging.info(f"\nNo more tasks")
+
+			tasks_done = 0
 
 			for task in futures[:]:
 				logging.info(f"checking task: {task}")
 				if task.done():
+					tasks_done = tasks_done + 1
 					logging.info(f"done task: {task}, result: {task.result()}")
 					futures.remove(task)
-			time.sleep(config.check_interval)
+			if (tasks_done == 0):
+				time.sleep(config.check_interval)
 		except KeyboardInterrupt as e:
 			logging.debug(f"Done sleeping due to exception: {e}")
 
