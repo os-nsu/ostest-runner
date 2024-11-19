@@ -141,8 +141,8 @@ def tests(params, stop_event, repo_dir, reports_dir, tests_dir, cleaners):
 	return f"{reports_dir}/report.xml"
 
 def clean_up_cleaners(cleaners):
-	for i in cleaners:
-		i()
+	for cleaner in cleaners:
+		cleaner()
 
 def run_test(task_json, stop_event, worker_num):
 	params = get_parameters(task_json, worker_num)
