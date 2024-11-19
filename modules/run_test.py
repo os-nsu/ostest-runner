@@ -122,21 +122,21 @@ def tests(params, stop_event, repo_dir, reports_dir, tests_dir, cleaners):
 		with open(f"{reports_dir}/stdout_output_{params["attempt"]}", "w") as outfile:
 			outfile.write(out.read())
 	except IOError as e:
-		logging.error(f"Error while writing {report_dir}/stdout_output_{params["attempt"]} file")
-		raise RuntimeError(f"Error while writing {report_dir}/stdout_output_{params["attempt"]} file") from e
+		logging.error(f"Error while writing {reports_dir}/stdout_output_{params["attempt"]} file")
+		raise RuntimeError(f"Error while writing {reports_dir}/stdout_output_{params["attempt"]} file") from e
 	except OSError as e:
-		logging.error(f"Cannot open {report_dir}/stdout_output_{params["attempt"]} file")
-		raise RuntimeError(f"Cannot open {report_dir}/stdout_output_{params["attempt"]} file") from e
+		logging.error(f"Cannot open {reports_dir}/stdout_output_{params["attempt"]} file")
+		raise RuntimeError(f"Cannot open {reports_dir}/stdout_output_{params["attempt"]} file") from e
 	if not is_good:
 		try:
 			with open(f"{reports_dir}/stderr_output_{params["attempt"]}", "w") as outfile:
 				outfile.write(err.read())
 		except IOError as e:
-			logging.error(f"Error while writing {report_dir}/stderr_output_{params["attempt"]} file")
-			raise RuntimeError(f"Error while writing {report_dir}/stderr_output_{params["attempt"]} file") from e
+			logging.error(f"Error while writing {reports_dir}/stderr_output_{params["attempt"]} file")
+			raise RuntimeError(f"Error while writing {reports_dir}/stderr_output_{params["attempt"]} file") from e
 		except OSError as e:
-			logging.error(f"Cannot open {report_dir}/stderr_output_{params["attempt"]} file")
-			raise RuntimeError(f"Cannot open {report_dir}/stderr_output_{params["attempt"]} file") from e
+			logging.error(f"Cannot open {reports_dir}/stderr_output_{params["attempt"]} file")
+			raise RuntimeError(f"Cannot open {reports_dir}/stderr_output_{params["attempt"]} file") from e
 		raise RuntimeError("Error while running tests")
 	return f"{reports_dir}/report.xml"
 
