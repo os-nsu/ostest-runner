@@ -93,6 +93,7 @@ def main_loop(config):
 					futures.remove(task)
 			if (tasks_done == 0):
 				time.sleep(config.check_interval)
+			is_in_loop = False
 		except KeyboardInterrupt as e:
 			logging.debug(f"Done sleeping due to exception: {e}")
 
