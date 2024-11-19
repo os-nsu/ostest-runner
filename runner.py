@@ -34,8 +34,6 @@ def signal_handler(signum, frame):
 		raise KeyboardInterrupt("Stop sleeping")
 
 def start_testing(config, task, worker_num):
-	worker_num = getWorkerNum()
-
 	logging.info(f"Received task")
 	task_json = task.json()
 
@@ -56,7 +54,6 @@ def start_testing(config, task, worker_num):
 	logging.debug(f"post body: {result}")
 
 	post_results(config, result)
-	releaseWorkerNum(worker_num)
 
 def main_loop(config):
 	running = True
