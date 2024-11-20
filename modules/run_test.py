@@ -30,7 +30,7 @@ class TestRunner:
 				logging.error(f"Stop {message} due to timeout")
 				proc.send_signal(signal.SIGINT)
 				proc.wait()
-				return False, proc.stdout, proc.stderr
+				raise RuntimeError(f"Timeout, {message} runned more than:{self.__timeout} seconds")
 			if self.__stop_event.is_set():
 				logging.info(f"Stop {message} due to signal recieve")
 				proc.send_signal(signal.SIGINT)
@@ -74,6 +74,7 @@ class TestRunner:
 				"--branch",
 				self.__params["branch"]]
 		cwd = self.__params["dir_path"] + f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/"
+		logging.debug(f"repo cloned {self.__params["worker_num"]}")
 		is_good, _, _ = self.__start_with_signal_watch(args, cwd, clean_up, "git clone repo")
 		if not is_good:
 			raise RuntimeError(f"Clone repo error")
@@ -97,13 +98,31 @@ class TestRunner:
 		]
 		cwd = self.__params["dir_path"] + tests_dir
 		is_good, _, _ = self.__start_with_signal_watch(args, cwd, clean_up, "git clone tests")
+		logging.debug(f"test cloned worker {self.__params["worker_num"]}")
 		if not is_good:
 			raise RuntimeError(f"Clone tests error")
 		return f"{tests_dir}/tests"
 
-	def __pip_install(self, tests_dir):
+	def __venv_create(self):
 		args = [
-			"pip",
+			"python",
+			"-m",
+			"venv",
+			f"./tests/{self.__params["worker_num"]}/venv"
+		]
+		cwd = self.__params["dir_path"]
+		try:
+			proc = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+			proc.wait()
+			logging.debug(f"venv created worker {self.__params["worker_num"]}")
+		except Exception as e:
+			logging.error(f"Can't create venv: {e}")
+			raise RuntimeError(f"Can't create venv: {e}") from e
+		return f"{cwd}tests/{self.__params["worker_num"]}/venv"
+
+	def __pip_install(self, tests_dir, venv_dir):
+		args = [
+			f"{venv_dir}/bin/pip",
 			"install",
 			"-r",
 			"requirements.txt"
@@ -111,21 +130,25 @@ class TestRunner:
 		try:
 			proc = subprocess.Popen(args, cwd=tests_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 			proc.wait()
+			logging.debug(f"pip install worker {self.__params["worker_num"]}")
 		except Exception as e:
 			logging.error(f"Can't start pip: {e}")
 			raise RuntimeError(f"Can't start pip: {e}") from e
 
-	def __tests(self, repo_dir, reports_dir, tests_dir):
+	def __tests(self, repo_dir, reports_dir, tests_dir, venv_dir):
 		clean_up = lambda : None
 		self.__cleaners.append(clean_up)
 		args = [
+			f"{venv_dir}/bin/python",
 			"./run_tests.py",
 			"--src",
 			f"{self.__params["dir_path"]}{repo_dir}",
 			f"--junit-xml={self.__params["dir_path"]}{reports_dir}/report.xml"
 		]
 		cwd = self.__params["dir_path"] + tests_dir
+		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")
+		logging.debug(f"tests end worker {self.__params["worker_num"]}")
 		try:
 			with open(f"{reports_dir}/stdout_output_{self.__params["attempt"]}", "w") as outfile:
 				outfile.write(out.read())
@@ -149,17 +172,19 @@ class TestRunner:
 		return f"{reports_dir}/report.xml"
 
 	def __clean_up_cleaners(self):
+		logging.debug(f"cleanup worker {self.__params["worker_num"]}")
 		for cleaner in self.__cleaners:
 			cleaner()
 
 	def run_test(self):
+		logging.debug(f"started run_test worker {self.__params["worker_num"]}")
 		report_folder_dir = self.__create_report_folder()
-
 		try:
 			repo_dir = self.__clone_repo()
 			tests_dir = self.__clone_test()
-			self.__pip_install(tests_dir)
-			report_file_name = self.__tests(repo_dir, report_folder_dir, tests_dir)
+			venv_dir = self.__venv_create()
+			self.__pip_install(tests_dir, venv_dir)
+			report_file_name = self.__tests(repo_dir, report_folder_dir, tests_dir, venv_dir)
 			self.__clean_up_cleaners()
 		except RuntimeError as e:
 			logging.error(f"Error while running tests: {e}")

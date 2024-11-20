@@ -59,7 +59,7 @@ def start_testing(task, network, parser):
 	task_json = task.json()
 	worker_num = getWorkerNum()
 	result = {}
-	runner = TestRunner(task_json, stop_event, worker_num)
+	runner = TestRunner(task_json, stop_event, worker_num, 0.01, 20)
 	try:
 		xml_path = runner.run_test()
 		result = parser.parse_xml_result(xml_path)

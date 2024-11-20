@@ -22,4 +22,4 @@ def start_testing_mock(task, network, parser): ## For backend testing
 
 	logging.info(f"post body: {result}")
 
-	network.post_results(config, result)
+	network.post_results(result)
