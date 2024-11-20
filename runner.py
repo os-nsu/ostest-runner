@@ -11,6 +11,9 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 import subprocess
 import os
+from multiprocessing.pool import worker
+
+from modules.futures_store import FuturesStore
 from modules.run_test import TestRunner
 from modules.start_testing_mock import start_testing_mock
 from modules.parse_result import Parser
@@ -20,9 +23,6 @@ import logging
 
 stop_event = threading.Event()
 is_in_loop = False
-
-worker_slots_lock = threading.Lock()
-worker_slots = None
 
 class Config(object):
 	pass
@@ -35,29 +35,10 @@ def signal_handler(signum, frame):
 		is_in_loop = False
 		raise KeyboardInterrupt("Stop sleeping")
 
-def getWorkerNum():
-	global worker_slots_lock
-	global worker_slots
-	worker_num = 0
-	with worker_slots_lock:
-		if worker_slots is None:
-			worker_slots = [False for i in range(config.concurrent)]
-		for idx, isOccupied in enumerate(worker_slots):
-			if isOccupied:
-				continue
-			worker_num = idx
-			break
-		worker_slots[worker_num] = True
-	return worker_num
 
-def releaseWorkerNum(worker_num):
-	with worker_slots_lock:
-		worker_slots[worker_num] = False
-
-def start_testing(task, network, parser):
+def start_testing(task, network, parser, worker_num):
 	logging.info(f"Received task")
 	task_json = task.json()
-	worker_num = getWorkerNum()
 	result = {}
 	runner = TestRunner(task_json, stop_event, worker_num, 0.01, 20)
 	try:
@@ -75,12 +56,12 @@ def start_testing(task, network, parser):
 	logging.debug(f"\npost body: {result}")
 
 	network.post_results(result)
-	releaseWorkerNum(worker_num)
+
 
 def main_loop(config):
 	running = True
 
-	futures = []
+	futures_store = FuturesStore(config.concurrent)
 
 	global is_in_loop
 	jobs_pool = ThreadPoolExecutor(max_workers=config.concurrent)
@@ -92,28 +73,29 @@ def main_loop(config):
 				running = False
 				continue
 			is_in_loop = True
-			while len(futures) < config.concurrent:
+			while len(futures_store) < config.concurrent:
 				task = network.get_task()
 				if not task:
 					break
 				if config.mock:
-					futures.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
+					futures_store.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
 				else:
-					futures.append(jobs_pool.submit(start_testing, task, network, parser))
-			if len(futures) == config.concurrent:
+					worker_num = futures_store.get_next_worker_num()
+					futures_store.append(jobs_pool.submit(start_testing, task, network, parser, worker_num))
+			if len(futures_store) == config.concurrent:
 				logging.info(f"No space for new job")
-			if len(futures) < config.concurrent:
+			if len(futures_store) < config.concurrent:
 				logging.info(f"No more tasks")
 
 			tasks_done = 0
 
-			for task in futures[:]:
+			for task in futures_store:
 				logging.info(f"checking task: {task}")
 				if task.done():
-					tasks_done = tasks_done + 1
+					tasks_done += 1
 					logging.info(f"done task: {task}, result: {task.result()}")
-					futures.remove(task)
-			if (tasks_done == 0):
+					futures_store.remove(task)
+			if tasks_done == 0:
 				time.sleep(config.check_interval)
 			is_in_loop = False
 		except KeyboardInterrupt as e:
