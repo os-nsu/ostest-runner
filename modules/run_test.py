@@ -64,8 +64,9 @@ class TestRunner:
 		}
 
 	def __clone_repo(self):
-		os.makedirs(f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/", exist_ok=True)
-		clean_up = lambda: shutil.rmtree(f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/{self.__params["project_dir"]}", ignore_errors=True)
+		base_repo_dir = f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/"
+		os.makedirs(base_repo_dir, exist_ok=True)
+		clean_up = lambda: shutil.rmtree(base_repo_dir + self.__params["project_dir"], ignore_errors=True)
 		self.__cleaners.append(clean_up)
 		clean_up()
 		args = ["git",
@@ -73,12 +74,12 @@ class TestRunner:
 				self.__params["repositoryUrl"],
 				"--branch",
 				self.__params["branch"]]
-		cwd = self.__params["dir_path"] + f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/"
+		cwd = self.__params["dir_path"] + base_repo_dir
 		logging.debug(f"repo cloned {self.__params["worker_num"]}")
 		is_good, _, _ = self.__start_with_signal_watch(args, cwd, clean_up, "git clone repo")
 		if not is_good:
 			raise RuntimeError(f"Clone repo error")
-		return f"labs/{self.__params["worker_num"]}/{self.__params["user"]}/{self.__params["project_dir"]}"
+		return base_repo_dir + f"/{self.__params["project_dir"]}"
 
 	def __create_report_folder(self):
 		report_dir = f"tests/reports/{self.__params["worker_num"]}/{self.__params["user"]}/{self.__params["project_dir"]}"
@@ -86,9 +87,9 @@ class TestRunner:
 		return report_dir
 
 	def __clone_test(self):
-		clean_up = lambda: shutil.rmtree(f"tests/{self.__params["worker_num"]}/tests", ignore_errors=True)
-		self.__cleaners.append(clean_up)
 		tests_dir = f"tests/{self.__params["worker_num"]}"
+		clean_up = lambda: shutil.rmtree(tests_dir + "tests", ignore_errors=True)
+		self.__cleaners.append(clean_up)
 		os.makedirs(tests_dir, exist_ok=True)
 		clean_up()
 		args = [
@@ -104,11 +105,12 @@ class TestRunner:
 		return f"{tests_dir}/tests"
 
 	def __venv_create(self):
+		venv_dir = f"./tests/{self.__params["worker_num"]}/venv"
 		args = [
 			"python",
 			"-m",
 			"venv",
-			f"./tests/{self.__params["worker_num"]}/venv"
+			venv_dir
 		]
 		cwd = self.__params["dir_path"]
 		try:
@@ -118,7 +120,7 @@ class TestRunner:
 		except Exception as e:
 			logging.error(f"Can't create venv: {e}")
 			raise RuntimeError(f"Can't create venv: {e}") from e
-		return f"{cwd}tests/{self.__params["worker_num"]}/venv"
+		return cwd + venv_dir
 
 	def __pip_install(self, tests_dir, venv_dir):
 		args = [
@@ -149,25 +151,27 @@ class TestRunner:
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")
 		logging.debug(f"tests end worker {self.__params["worker_num"]}")
+		stdout_attempt_output_dir = f"{reports_dir}/stdout_output_{self.__params["attempt"]}"
+		stderr_attempt_output_dir = f"{reports_dir}/stderr_output_{self.__params["attempt"]}"
 		try:
-			with open(f"{reports_dir}/stdout_output_{self.__params["attempt"]}", "w") as outfile:
+			with open(stdout_attempt_output_dir, "w") as outfile:
 				outfile.write(out.read())
 		except IOError as e:
-			logging.error(f"Error while writing {reports_dir}/stdout_output_{self.__params["attempt"]} file")
-			raise RuntimeError(f"Error while writing {reports_dir}/stdout_output_{self.__params["attempt"]} file") from e
+			logging.error(f"Error while writing {stdout_attempt_output_dir} file")
+			raise RuntimeError(f"Error while writing {stdout_attempt_output_dir} file") from e
 		except OSError as e:
-			logging.error(f"Cannot open {reports_dir}/stdout_output_{self.__params["attempt"]} file")
-			raise RuntimeError(f"Cannot open {reports_dir}/stdout_output_{self.__params["attempt"]} file") from e
+			logging.error(f"Cannot open {stdout_attempt_output_dir} file")
+			raise RuntimeError(f"Cannot open {stdout_attempt_output_dir} file") from e
 		if not is_good:
 			try:
-				with open(f"{reports_dir}/stderr_output_{self.__params["attempt"]}", "w") as outfile:
+				with open(stderr_attempt_output_dir, "w") as outfile:
 					outfile.write(err.read())
 			except IOError as e:
-				logging.error(f"Error while writing {reports_dir}/stderr_output_{self.__params["attempt"]} file")
-				raise RuntimeError(f"Error while writing {reports_dir}/stderr_output_{self.__params["attempt"]} file") from e
+				logging.error(f"Error while writing {stderr_attempt_output_dir} file")
+				raise RuntimeError(f"Error while writing {stderr_attempt_output_dir} file") from e
 			except OSError as e:
-				logging.error(f"Cannot open {reports_dir}/stderr_output_{self.__params["attempt"]} file")
-				raise RuntimeError(f"Cannot open {reports_dir}/stderr_output_{self.__params["attempt"]} file") from e
+				logging.error(f"Cannot open {stderr_attempt_output_dir} file")
+				raise RuntimeError(f"Cannot open {stderr_attempt_output_dir} file") from e
 			raise RuntimeError("Error while running tests")
 		return f"{reports_dir}/report.xml"
 
@@ -184,7 +188,7 @@ class TestRunner:
 			tests_dir = self.__clone_test()
 			venv_dir = self.__venv_create()
 			self.__pip_install(tests_dir, venv_dir)
-			report_file_name = self.__tests(repo_dir, report_folder_dir, tests_dir, venv_dir)
+			report_file_path = self.__tests(repo_dir, report_folder_dir, tests_dir, venv_dir)
 			self.__clean_up_cleaners()
 		except RuntimeError as e:
 			logging.error(f"Error while running tests: {e}")
@@ -194,4 +198,4 @@ class TestRunner:
 			logging.info(f"Testing stopped due to: {e}")
 			self.__clean_up_cleaners()
 			raise e
-		return report_file_name
+		return report_file_path
