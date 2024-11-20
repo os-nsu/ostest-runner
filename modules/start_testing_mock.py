@@ -1,8 +1,7 @@
 import logging
-from modules.parse_result import parse_xml_result
-from modules.network import post_results
+from modules.parse_result import Parser
 
-def start_testing_mock(config, task): ## For backend testing
+def start_testing_mock(task, network, parser): ## For backend testing
 	logging.info(f"Received task")
 	task_json = task.json()
 
@@ -15,12 +14,12 @@ def start_testing_mock(config, task): ## For backend testing
 	xml_path2 = "mock_server/reports/failed_report.xml"
 
 	if task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-grisha.git":
-		result = parse_xml_result(xml_path1)
+		result = parser.parse_xml_result(xml_path1)
 	elif task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-anton.git":
-		result = parse_xml_result(xml_path2)
+		result = parser.parse_xml_result(xml_path2)
 
 	result["attempt"] = task_json["attempt"]
 
 	logging.info(f"post body: {result}")
 
-	post_results(config, result)
+	network.post_results(config, result)

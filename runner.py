@@ -11,49 +11,71 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 import subprocess
 import os
-from modules.run_test import run_test
+from modules.run_test import TestRunner
 from modules.start_testing_mock import start_testing_mock
-from modules.parse_result import parse_xml_result
-from modules.parse_result import parse_error_result
+from modules.parse_result import Parser
+from modules.network import Network
 import logging
-from modules.network import get_task
-from modules.network import post_results
+
 
 stop_event = threading.Event()
 is_in_loop = False
+
+worker_slots_lock = threading.Lock()
+worker_slots = None
 
 class Config(object):
 	pass
 
 def signal_handler(signum, frame):
-	logging.info(f"\nReceived signal, terminating...")
+	logging.info(f"Received signal, terminating...")
 	stop_event.set()
 	global is_in_loop
 	if is_in_loop:
 		is_in_loop = False
 		raise KeyboardInterrupt("Stop sleeping")
 
-def start_testing(config, task, worker_num):
+def getWorkerNum():
+	global worker_slots_lock
+	global worker_slots
+	worker_num = 0
+	with worker_slots_lock:
+		if worker_slots is None:
+			worker_slots = [False for i in range(config.concurrent)]
+		for idx, isOccupied in enumerate(worker_slots):
+			if isOccupied:
+				continue
+			worker_num = idx
+			break
+		worker_slots[worker_num] = True
+	return worker_num
+
+def releaseWorkerNum(worker_num):
+	with worker_slots_lock:
+		worker_slots[worker_num] = False
+
+def start_testing(task, network, parser):
 	logging.info(f"Received task")
 	task_json = task.json()
-
+	worker_num = getWorkerNum()
 	result = {}
-
+	runner = TestRunner(task_json, stop_event, worker_num)
 	try:
-		xml_path = run_test(task_json, stop_event, worker_num)
-		result = parse_xml_result(xml_path)
+		xml_path = runner.run_test()
+		result = parser.parse_xml_result(xml_path)
 	except RuntimeError as e:
 		logging.error(f"run_test exited with due to {e}")
-		result = parse_error_result(e)
+		result = parser.parse_error_result(e)
 	except KeyboardInterrupt as e:
 		logging.info(f"run_test exited with due to {e}")
 		return
 
 	result["attempt"] = task_json["attempt"]
 
-	logging.debug(f"post body: {result}")
+	logging.debug(f"\npost body: {result}")
 
-	post_results(config, result)
+	network.post_results(result)
+	releaseWorkerNum(worker_num)
 
 def main_loop(config):
 	running = True
@@ -62,7 +84,8 @@ def main_loop(config):
 
 	global is_in_loop
 	jobs_pool = ThreadPoolExecutor(max_workers=config.concurrent)
-	worker_num = 0
+	network = Network(config)
+	parser = Parser()
 	while running:
 		try:
 			if stop_event.is_set():
@@ -70,18 +93,17 @@ def main_loop(config):
 				continue
 			is_in_loop = True
 			while len(futures) < config.concurrent:
-				task = get_task(config)
+				task = network.get_task()
 				if not task:
 					break
 				if config.mock:
-					futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
+					futures.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
 				else:
-					futures.append(jobs_pool.submit(start_testing, config, task, worker_num))
-					worker_num = (worker_num + 1) % config.concurrent
+					futures.append(jobs_pool.submit(start_testing, task, network, parser))
 			if len(futures) == config.concurrent:
-				logging.info(f"\nNo space for new job")
+				logging.info(f"No space for new job")
 			if len(futures) < config.concurrent:
-				logging.info(f"\nNo more tasks")
+				logging.info(f"No more tasks")
 
 			tasks_done = 0
 
@@ -123,7 +145,7 @@ def parse_args():
 	parser.add_argument("--check-interval", type=int, default=5)
 	parser.add_argument("--get-api", type=str, default="/api/task/available")
 	parser.add_argument("--post-api", type=str, default="/api/task/result")
-	parser.add_argument("--logger-level", type=str, default="error", help="debug, info, warning, error, critical")
+	parser.add_argument("--logger-level", type=str, default="error", help="debug, info, warning, error, critical. Default is error")
 	parser.add_argument("--logger-output", type=str, default="", help="log file path, default stdout")
 	args = parser.parse_args()
 

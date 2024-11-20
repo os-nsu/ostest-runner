@@ -1,56 +1,57 @@
 import xml.etree.ElementTree as ET
 import random
 
-def parse_xml_result(report_path):
-	result = {}
-	attempt_result = {}
-	test_results = []
+class Parser:
+	def parse_xml_result(self, report_path):
+		result = {}
+		attempt_result = {}
+		test_results = []
 
-	test_suites = ET.parse(report_path).getroot()
-	test_suit = test_suites.find('testsuite')
+		test_suites = ET.parse(report_path).getroot()
+		test_suit = test_suites.find('testsuite')
 
-	attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0
-	attempt_result["isError"] = int(test_suit.get("errors")) != 0
-	attempt_result["errorDetails"] = "error during task execution" if attempt_result["isError"] else ""
-	attempt_result["duration"] = test_suit.get("time")
+		attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0
+		attempt_result["isError"] = int(test_suit.get("errors")) != 0
+		attempt_result["errorDetails"] = "error during task execution" if attempt_result["isError"] else ""
+		attempt_result["duration"] = test_suit.get("time")
 
-	for testcase in test_suit.findall("testcase"):
-		test_result = {}
+		for testcase in test_suit.findall("testcase"):
+			test_result = {}
 
-		class_name = testcase.get("classname")
-		test_name = testcase.get("name")
-		name = class_name.replace("tests.", "")
-		name = name + "::" + test_name
+			class_name = testcase.get("classname")
+			test_name = testcase.get("name")
+			name = class_name.replace("tests.", "")
+			name = name + "::" + test_name
 
-		test_result["name"] = name
-		test_result["isPassed"] = True
-		test_result["description"] = ""
-		test_result["duration"] = testcase.get("time")
-		test_result["memoryUsed"] = random.randrange(1000, 2000)
+			test_result["name"] = name
+			test_result["isPassed"] = True
+			test_result["description"] = ""
+			test_result["duration"] = testcase.get("time")
+			test_result["memoryUsed"] = random.randrange(1000, 2000)
 
-		if len(testcase):
-			failure = testcase.find("failure")
-			if failure is not None:
-				test_result["isPassed"] = False
-				test_result["description"] = failure.text
+			if len(testcase):
+				failure = testcase.find("failure")
+				if failure is not None:
+					test_result["isPassed"] = False
+					test_result["description"] = failure.text
 
-		test_results.append(test_result)
+			test_results.append(test_result)
 
-	attempt_result["testCases"] = test_results
+		attempt_result["testCases"] = test_results
 
-	result["testResults"] = attempt_result
-	return result
+		result["testResults"] = attempt_result
+		return result
 
-def parse_error_result(error): ## TODO: Check contract
-	result = {}
-	attempt_result = {}
-	test_results = []
+	def parse_error_result(self, error): ## TODO: Check contract
+		result = {}
+		attempt_result = {}
+		test_results = []
 
-	attempt_result["isPassed"] = False
-	attempt_result["isError"] = True
-	attempt_result["errorDetails"] = f"{error}"
-	attempt_result["duration"] = 0
-	attempt_result["testCases"] = []
+		attempt_result["isPassed"] = False
+		attempt_result["isError"] = True
+		attempt_result["errorDetails"] = f"{error}"
+		attempt_result["duration"] = 0
+		attempt_result["testCases"] = []
 
-	result["testResults"] = attempt_result
-	return result
+		result["testResults"] = attempt_result
+		return result
