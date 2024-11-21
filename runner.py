@@ -5,170 +5,119 @@
 import random
 import sys
 import time
-import requests
 import argparse
 import signal
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import xml.etree.ElementTree as ET
 import subprocess
 import os
-from run_test import run_test
+from multiprocessing.pool import worker
+
+from modules.futures_store import FuturesStore
+from modules.run_test import TestRunner
+from modules.start_testing_mock import start_testing_mock
+from modules.parse_result import Parser
+from modules.network import Network
+import logging
+
 
 stop_event = threading.Event()
-jobs_pool = None
-
-get_task_api_path = "/api/task/available"
-post_task_api_path = "/api/task/result"
+is_in_loop = False
 
 class Config(object):
 	pass
 
 def signal_handler(signum, frame):
-	print(f"\nReceived signal, terminating...")
+	logging.info(f"Received signal, terminating...")
 	stop_event.set()
-
-def parse_xml_result(report_path):
-	result = {}
-	attempt_result = {}
-	test_results = []
-
-	test_suites = ET.parse(report_path).getroot()
-	test_suit = test_suites.find('testsuite')
-
-	attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0
-	attempt_result["isError"] = int(test_suit.get("errors")) != 0
-	attempt_result["errorDetails"] = "error during task execution" if attempt_result["isError"] else ""
-	attempt_result["duration"] = test_suit.get("time")
-
-	for testcase in test_suit.findall("testcase"):
-		test_result = {}
-
-		class_name = testcase.get("classname")
-		test_name = testcase.get("name")
-		name = class_name.replace("tests.", "")
-		name = name + "::" + test_name
-
-		test_result["name"] = name
-		test_result["isPassed"] = True
-		test_result["description"] = ""
-		test_result["duration"] = testcase.get("time")
-		test_result["memoryUsed"] = random.randrange(1000, 2000)
-
-		if len(testcase):
-			failure = testcase.find("failure")
-			if failure is not None:
-				test_result["isPassed"] = False
-				test_result["description"] = failure.text
-
-		test_results.append(test_result)
-
-	attempt_result["testCases"] = test_results
-
-	result["testResults"] = attempt_result
-	return result
+	global is_in_loop
+	if is_in_loop:
+		is_in_loop = False
+		raise KeyboardInterrupt("Stop sleeping")
 
 
-def start_testing_mock(config, task): ## For backend testing
-	print(f"Received task")
+def start_testing(task, network, parser, worker_num):
+	logging.info(f"Received task")
 	task_json = task.json()
-
-	## TODO: Execute run_test.sh
-
 	result = {}
-
-	## For testing
-	xml_path1 = "mock_server/reports/passed_report.xml"
-	xml_path2 = "mock_server/reports/failed_report.xml"
-
-	if task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-grisha.git":
-		result = parse_xml_result(xml_path1)
-	elif task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-anton.git":
-		result = parse_xml_result(xml_path2)
-
-	result["attempt"] = task_json["attempt"]
-
-	print(f"post body: {result}")
-
-	post_results(result)
-
-
-def start_testing(config, task):
-	print(f"Received task")
-	task_json = task.json()
-
-	xml_path = run_test(task_json, stop_event)
-
-	if xml_path is None:
-		## TODO: create task resubmission or failure message send
-		return
-
-	result = {}
-
-	result = parse_xml_result(xml_path)
-
-	result["attempt"] = task_json["attempt"]
-
-	print(f"post body: {result}")
-
-	post_results(result)
-
-
-def post_results(result):
-	response = requests.post(config.backend_url + post_task_api_path, json=result)
-	if response:
-		print(f"Sent results to backend server successfully, return code:\n{response.status_code}")
-	else:
-		print(f"Couldn't send results to backend server, return code:\n{response.status_code}")
-
-def get_task(config):
-	get_task_url = config.backend_url + get_task_api_path
-	response = None
+	runner = TestRunner(task_json, stop_event, worker_num, 0.01, 20)
 	try:
-		response = requests.get(get_task_url)
-	except requests.exceptions.RequestException as e:
-		print(f"No task available: got exception:\n{e}")
+		xml_path = runner.run_test()
+		result = parser.parse_xml_result(xml_path)
+	except RuntimeError as e:
+		logging.error(f"run_test exited with due to {e}")
+		result = parser.parse_error_result(e)
+	except KeyboardInterrupt as e:
+		logging.info(f"run_test exited with due to {e}")
 		return
 
-	if response:
-		return response
-	else:
-		print(f"No task available: response status code:\n{response.status_code}")
+	result["attempt"] = task_json["attempt"]
+
+	logging.debug(f"\npost body: {result}")
+
+	network.post_results(result)
+
 
 def main_loop(config):
 	running = True
 
-	futures = []
+	futures_store = FuturesStore(config.concurrent)
 
-	global jobs_pool
+	global is_in_loop
 	jobs_pool = ThreadPoolExecutor(max_workers=config.concurrent)
-
+	network = Network(config)
+	parser = Parser()
 	while running:
-		if stop_event.is_set():
-			running = False
-			continue
-
-		if len(futures) < config.concurrent:
-			task = get_task(config)
-			if task:
+		try:
+			if stop_event.is_set():
+				running = False
+				continue
+			is_in_loop = True
+			while len(futures_store) < config.concurrent:
+				task = network.get_task()
+				if not task:
+					break
 				if config.mock:
-					futures.append(jobs_pool.submit(start_testing_mock, config, task)) ## for backend testing
+					futures_store.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
 				else:
-					futures.append(jobs_pool.submit(start_testing, config, task))
-		else:
-			print(f"\nNo space for new job")
+					worker_num = futures_store.get_next_worker_num()
+					futures_store.append(jobs_pool.submit(start_testing, task, network, parser, worker_num))
+			if len(futures_store) == config.concurrent:
+				logging.info(f"No space for new job")
+			if len(futures_store) < config.concurrent:
+				logging.info(f"No more tasks")
 
-		for task in futures[:]:
-			print(f"checking task: {task}")
-			if task.done():
-				print(f"done task: {task}, result: {task.result()}")
-				futures.remove(task)
+			tasks_done = 0
 
-		time.sleep(config.check_interval)
+			for task in futures_store:
+				logging.info(f"checking task: {task}")
+				if task.done():
+					tasks_done += 1
+					logging.info(f"done task: {task}, result: {task.result()}")
+					futures_store.remove(task)
+			if tasks_done == 0:
+				time.sleep(config.check_interval)
+			is_in_loop = False
+		except KeyboardInterrupt as e:
+			logging.debug(f"Done sleeping due to exception: {e}")
 
 	jobs_pool.shutdown()
 
 	return 0
+
+def configure_logger(config):
+	logger_level_match = {
+		"debug": logging.DEBUG,
+		"info": logging.INFO,
+		"warning": logging.WARNING,
+		"error": logging.ERROR,
+		"critical": logging.CRITICAL,
+	}
+	format = "%(asctime)s %(levelname)s %(message)s"
+	if len(config.logger_output) == 0:
+		logging.basicConfig(level=logger_level_match[config.logger_level], format=format)
+		return
+	logging.basicConfig(level=logger_level_match[config.logger_level], filename=config.logger_output, format=format)
 
 def parse_args():
 	parser = argparse.ArgumentParser(description="Run parallel make checks with various tools")
@@ -176,6 +125,10 @@ def parse_args():
 	parser.add_argument("--backend-url", default="http://localhost:5000")
 	parser.add_argument("--concurrent", type=int, default=2)
 	parser.add_argument("--check-interval", type=int, default=5)
+	parser.add_argument("--get-api", type=str, default="/api/task/available")
+	parser.add_argument("--post-api", type=str, default="/api/task/result")
+	parser.add_argument("--logger-level", type=str, default="error", help="debug, info, warning, error, critical. Default is error")
+	parser.add_argument("--logger-output", type=str, default="", help="log file path, default stdout")
 	args = parser.parse_args()
 
 	config = Config()
@@ -183,6 +136,10 @@ def parse_args():
 	config.backend_url = args.backend_url
 	config.concurrent = args.concurrent
 	config.check_interval = args.check_interval
+	config.get_task_api_path = args.get_api
+	config.post_task_api_path = args.post_api
+	config.logger_level = args.logger_level
+	config.logger_output = args.logger_output
 
 	return config
 
@@ -191,6 +148,7 @@ if __name__ == "__main__":
 	signal.signal(signal.SIGTERM, signal_handler)
 
 	config = parse_args()
+	configure_logger(config)
 	ret_code = main_loop(config)
 
 	sys.exit(ret_code)
