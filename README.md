@@ -15,7 +15,7 @@ If backend has auth, use --auth
 You can set login and password with --login and --password, default is dora_explorer for both
 
 ```
-./runner.py --backend-url http://localhost:8080 -auth
+./runner.py --backend-url http://localhost:8080 --auth
 ```
 
 ### Start mock backend
