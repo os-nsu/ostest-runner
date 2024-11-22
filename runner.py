@@ -18,6 +18,7 @@ from modules.run_test import TestRunner
 from modules.start_testing_mock import start_testing_mock
 from modules.parse_result import Parser
 from modules.network import Network
+from modules.network import NetworkWithAuth
 import logging
 
 
@@ -65,7 +66,13 @@ def main_loop(config):
 
 	global is_in_loop
 	jobs_pool = ThreadPoolExecutor(max_workers=config.concurrent)
+
 	network = Network(config)
+	if config.auth:
+		network = NetworkWithAuth(config)
+	else:
+		network = Network(config)
+
 	parser = Parser()
 	while running:
 		try:
@@ -76,6 +83,8 @@ def main_loop(config):
 			while len(futures_store) < config.concurrent:
 				task = network.get_task()
 				if not task:
+					break
+				if task.json()["status"] is not None and task.json()["status"] == "UNAVAILABLE":
 					break
 				if config.mock:
 					futures_store.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
@@ -127,6 +136,10 @@ def parse_args():
 	parser.add_argument("--check-interval", type=int, default=5)
 	parser.add_argument("--get-api", type=str, default="/api/task/available")
 	parser.add_argument("--post-api", type=str, default="/api/task/result")
+	parser.add_argument("--login-api", type=str, default="/api/v1/login")
+	parser.add_argument("--login", type=str, default="dora_explorer")
+	parser.add_argument("--password", type=str, default="dora_explorer")
+	parser.add_argument("--auth", action="store_true", help="use if backend has authentication") ## For auth
 	parser.add_argument("--logger-level", type=str, default="error", help="debug, info, warning, error, critical. Default is error")
 	parser.add_argument("--logger-output", type=str, default="", help="log file path, default stdout")
 	args = parser.parse_args()
@@ -138,6 +151,10 @@ def parse_args():
 	config.check_interval = args.check_interval
 	config.get_task_api_path = args.get_api
 	config.post_task_api_path = args.post_api
+	config.login_api_path = args.login_api
+	config.login = args.login
+	config.password = args.password
+	config.auth = args.auth ## For auth
 	config.logger_level = args.logger_level
 	config.logger_output = args.logger_output
 

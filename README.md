@@ -11,6 +11,18 @@ After tests uploads results back.
 
 Will start asking backend for new tasks.
 
+If backend has auth, use --auth
+You can set login and password with --login and --password, default is dora_explorer for both
+
+```
+./runner.py --backend-url http://localhost:8080 -auth
+```
+
+## Logger
+
+You can set logger level and output by --logger-level(default is error) and --logger-output(default is empty string == stdout)
+Logger levels: debug, info, warning, error, critical
+
 ### Start mock backend
 
 ```
