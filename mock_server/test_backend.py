@@ -14,7 +14,7 @@ def send_task():
 	global task_count, attempt_num
 
 	task = {}
-	task["attempt"] = attempt_num
+	task["id"] = attempt_num
 
 	if task_count % 2 == 0:
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"

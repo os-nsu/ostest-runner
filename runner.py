@@ -52,7 +52,7 @@ def start_testing(task, network, parser, worker_num):
 		logging.info(f"run_test exited with due to {e}")
 		return
 
-	result["attempt"] = task_json["attempt"]
+	result["id"] = task_json["id"]
 
 	logging.debug(f"\npost body: {result}")
 
