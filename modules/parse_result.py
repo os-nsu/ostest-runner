@@ -51,7 +51,7 @@ class Parser:
 		attempt_result["isError"] = True
 		attempt_result["errorDetails"] = f"{error}"
 		attempt_result["duration"] = 0
-		attempt_result["testCases"] = []
+		attempt_result["testResults"] = []
 
-		result["testResults"] = attempt_result
+		result = attempt_result
 		return result
