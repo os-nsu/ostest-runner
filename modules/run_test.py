@@ -55,7 +55,7 @@ class TestRunner:
 			"worker_num": worker_num,
 			"project_dir": task_json["repositoryUrl"].split("/")[-1].rstrip(".git"),
 			"user": task_json["repositoryUrl"].split("/")[-2],
-			"attempt": str(task_json["attempt"]),
+			"id": str(task_json["id"]),
 			"repositoryUrl": task_json["repositoryUrl"],
 			"branch": task_json["branch"],
 			"laboratoryNumber": str(task_json["laboratoryNumber"]),
@@ -151,27 +151,27 @@ class TestRunner:
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")
 		logging.debug(f"tests end worker {self.__params["worker_num"]}")
-		stdout_attempt_output_dir = f"{reports_dir}/stdout_output_{self.__params["attempt"]}"
-		stderr_attempt_output_dir = f"{reports_dir}/stderr_output_{self.__params["attempt"]}"
+		stdout_id_output_dir = f"{reports_dir}/stdout_output_{self.__params["id"]}"
+		stderr_id_output_dir = f"{reports_dir}/stderr_output_{self.__params["id"]}"
 		try:
-			with open(stdout_attempt_output_dir, "w") as outfile:
+			with open(stdout_id_output_dir, "w") as outfile:
 				outfile.write(out.read())
 		except IOError as e:
-			logging.error(f"Error while writing {stdout_attempt_output_dir} file")
-			raise RuntimeError(f"Error while writing {stdout_attempt_output_dir} file") from e
+			logging.error(f"Error while writing {stdout_id_output_dir} file")
+			raise RuntimeError(f"Error while writing {stdout_id_output_dir} file") from e
 		except OSError as e:
-			logging.error(f"Cannot open {stdout_attempt_output_dir} file")
-			raise RuntimeError(f"Cannot open {stdout_attempt_output_dir} file") from e
+			logging.error(f"Cannot open {stdout_id_output_dir} file")
+			raise RuntimeError(f"Cannot open {stdout_id_output_dir} file") from e
 		if not is_good:
 			try:
-				with open(stderr_attempt_output_dir, "w") as outfile:
+				with open(stderr_id_output_dir, "w") as outfile:
 					outfile.write(err.read())
 			except IOError as e:
-				logging.error(f"Error while writing {stderr_attempt_output_dir} file")
-				raise RuntimeError(f"Error while writing {stderr_attempt_output_dir} file") from e
+				logging.error(f"Error while writing {stderr_id_output_dir} file")
+				raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
 			except OSError as e:
-				logging.error(f"Cannot open {stderr_attempt_output_dir} file")
-				raise RuntimeError(f"Cannot open {stderr_attempt_output_dir} file") from e
+				logging.error(f"Cannot open {stderr_id_output_dir} file")
+				raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
 			raise RuntimeError("Error while running tests")
 		return f"{reports_dir}/report.xml"
 
