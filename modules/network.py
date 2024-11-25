@@ -29,17 +29,43 @@ class Network:
 class NetworkWithAuth:
 	def __init__(self, config):
 		self.__config = config
+		self.__token_type = None
+		self.__authToken = None
+		self.__refreshToken = None
+
+	def __refreshAuthToken(self):
+		body = {"refreshToken": self.__refreshToken}
+		logging.debug(f"refreshToken body:{body}")
+		response = requests.post(self.__config.backend_url + self.__config.token_refresh_api_path, json=body, headers={"Content-Type": "application/json"})
+		logging.debug(f"refreshToken response:{response}")
+		if response:
+			response_json = response.json()
+			logging.info(f"refresh token success, return code:\n{response.status_code}")
+			logging.debug(f"refresh token response body:{response_json}")
+			self.__token_type = response_json["type"]
+			self.__authToken = response_json["accessToken"]
+			self.__refreshToken = response_json["refreshToken"]
+			return True
+		else:
+			logging.error(f"refresh token error, return code:\n{response.status_code}")
+			return False
 
 	def __get_auth_token(self):
+		if self.__authToken is not None:
+			self.__refreshAuthToken()
+			return f"{self.__token_type} {self.__authToken}"
 		body = {"username": self.__config.login, "password": self.__config.password}
 		logging.debug(f"login body:{body}")
 		response = requests.post(self.__config.backend_url + self.__config.login_api_path, json=body, headers={"Content-Type": "application/json"})
-		logging.debug(f"response:{response}")
+		logging.debug(f"login response:{response}")
 		if response:
 			response_json = response.json()
 			logging.info(f"auth success, return code:\n{response.status_code}")
 			logging.debug(f"login response body:{response_json}")
-			return f"{response_json["type"]} {response_json["accessToken"]}"
+			self.__token_type = response_json["type"]
+			self.__authToken = response_json["accessToken"]
+			self.__refreshToken = response_json["refreshToken"]
+			return f"{self.__token_type} {self.__authToken}"
 		else:
 			logging.error(f"auth error, return code:\n{response.status_code}")
 			return

@@ -137,6 +137,7 @@ def parse_args():
 	parser.add_argument("--get-api", type=str, default="/api/task/available")
 	parser.add_argument("--post-api", type=str, default="/api/task/result")
 	parser.add_argument("--login-api", type=str, default="/api/v1/login")
+	parser.add_argument("--token-refresh-api", type=str, default="/api/v1/auth/refresh")
 	parser.add_argument("--login", type=str, default="dora_explorer")
 	parser.add_argument("--password", type=str, default="dora_explorer")
 	parser.add_argument("--auth", action="store_true", help="use if backend has authentication") ## For auth
@@ -152,6 +153,7 @@ def parse_args():
 	config.get_task_api_path = args.get_api
 	config.post_task_api_path = args.post_api
 	config.login_api_path = args.login_api
+	config.token_refresh_api_path = args.token_refresh_api
 	config.login = args.login
 	config.password = args.password
 	config.auth = args.auth ## For auth
