@@ -10,7 +10,7 @@ class Parser:
 		test_suites = ET.parse(report_path).getroot()
 		test_suit = test_suites.find('testsuite')
 
-		attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0
+		attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0 and int(test_suit.get("skipped")) == 0
 		attempt_result["isError"] = int(test_suit.get("errors")) != 0
 		attempt_result["errorDetails"] = "error during task execution" if attempt_result["isError"] else ""
 		attempt_result["duration"] = int(1000 * float(test_suit.get("time")))

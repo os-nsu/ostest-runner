@@ -20,7 +20,7 @@ def send_task():
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
 		task["branch"] = "main"
 		task["laboratoryNumber"] = 1
-		task["connectedTests"] = ["test_static_library_compilation", "test_static_library_inclusion", "test_plugin_compilation"]
+		task["connectedTests"] = ["test_static_library_compilation", "test_plugin_compilation"]
 	else:
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-anton.git"
 		task["branch"] = "develop"
