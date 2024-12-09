@@ -50,7 +50,7 @@ def start_testing(task, network, parser, worker_num):
 		result = parser.parse_error_result(e)
 	except KeyboardInterrupt as e:
 		logging.info(f"run_test exited with due to {e}")
-		return
+		result = parser.parse_error_result(e)
 
 	result["id"] = task_json["id"]
 

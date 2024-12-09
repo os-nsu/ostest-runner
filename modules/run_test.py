@@ -51,6 +51,14 @@ class TestRunner:
 		return True, out, err
 
 	def __get_parameters(self, task_json, worker_num):
+		connectedTests = task_json["connectedTests"]
+		if len(connectedTests) == 0:
+			connectedTestsStringPattern = ""
+		else:
+			connectedTestsStringPattern = connectedTests[0]
+			for test in connectedTests[1:]:
+				connectedTestsStringPattern += f" or {test}"
+
 		return {
 			"worker_num": worker_num,
 			"project_dir": task_json["repositoryUrl"].split("/")[-1].rstrip(".git"),
@@ -58,8 +66,8 @@ class TestRunner:
 			"id": str(task_json["id"]),
 			"repositoryUrl": task_json["repositoryUrl"],
 			"branch": task_json["branch"],
-			"laboratoryNumber": str(task_json["laboratoryNumber"]),
-			"connectedTests": task_json["connectedTests"],
+			"laboratoryNumber": str(task_json.get("laboratoryNumber", "")),
+			"connectedTests": connectedTestsStringPattern,
 			"dir_path": os.path.dirname(os.path.realpath(__file__)).rstrip("modules")
 		}
 
@@ -147,6 +155,13 @@ class TestRunner:
 			f"{self.__params["dir_path"]}{repo_dir}",
 			f"--junit-xml={self.__params["dir_path"]}{reports_dir}/report.xml"
 		]
+		if len(self.__params["connectedTests"])!=0:
+			args.append("-k")
+			args.append(f"{self.__params["connectedTests"]}")
+		if len(self.__params["laboratoryNumber"])!=0:
+			args.append("--lab-num")
+			args.append(f"{self.__params["laboratoryNumber"]}")
+
 		cwd = self.__params["dir_path"] + tests_dir
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")
