@@ -15,7 +15,7 @@ def send_task():
 
 	task = {}
 	task["id"] = attempt_num
-
+	task["status"] = "AVAILABLE"
 	if task_count % 2 == 0:
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
 		task["branch"] = "main"
