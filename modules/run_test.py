@@ -58,6 +58,7 @@ class TestRunner:
 			connectedTestsStringPattern = connectedTests[0]
 			for test in connectedTests[1:]:
 				connectedTestsStringPattern += f" or {test}"
+		logging.debug(f"Connected tests string pattern: {connectedTestsStringPattern}")
 
 		return {
 			"worker_num": worker_num,

@@ -1,5 +1,6 @@
 import requests
 import logging
+import time
 
 class Network:
 	def __init__(self, config):
@@ -29,6 +30,7 @@ class Network:
 class NetworkWithAuth:
 	def __init__(self, config):
 		self.__config = config
+		self.__refresh_time = config.refresh_time
 		self.__token_type = None
 		self.__authToken = None
 		self.__refreshToken = None
@@ -40,19 +42,22 @@ class NetworkWithAuth:
 		logging.debug(f"refreshToken response:{response}")
 		if response:
 			response_json = response.json()
+			self.__last_token_update = time.time()
 			logging.info(f"refresh token success, return code:\n{response.status_code}")
 			logging.debug(f"refresh token response body:{response_json}")
 			self.__token_type = response_json["type"]
 			self.__authToken = response_json["accessToken"]
 			self.__refreshToken = response_json["refreshToken"]
-			return True
 		else:
-			logging.error(f"refresh token error, return code:\n{response.status_code}")
-			return False
+			logging.error(f"refresh token error, setting reseting auth, return code:\n{response.status_code}")
+			self.__token_type = None
+			self.__authToken = None
+			self.__get_auth_token()
 
 	def __get_auth_token(self):
 		if self.__authToken is not None:
-			self.__refreshAuthToken()
+			if (time.time()-self.__last_token_update>self.__refresh_time):
+				self.__refreshAuthToken()
 			return f"{self.__token_type} {self.__authToken}"
 		body = {"username": self.__config.login, "password": self.__config.password}
 		logging.debug(f"login body:{body}")
@@ -60,6 +65,7 @@ class NetworkWithAuth:
 		logging.debug(f"login response:{response}")
 		if response:
 			response_json = response.json()
+			self.__last_token_update = time.time()
 			logging.info(f"auth success, return code:\n{response.status_code}")
 			logging.debug(f"login response body:{response_json}")
 			self.__token_type = response_json["type"]
@@ -91,3 +97,8 @@ class NetworkWithAuth:
 			logging.info(f"Sent results to backend server successfully, return code:\n{response.status_code}")
 		else:
 			logging.error(f"Couldn't send results to backend server, return code:\n{response.status_code}")
+			if (response.status_code == 401):
+				self.__token_type = None
+				self.__authToken = None
+				logging.info(f"relogining and resending results")
+				self.post_results(result)
