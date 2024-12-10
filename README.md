@@ -24,6 +24,11 @@ You can set login and password with --login and --password, default is dora_expl
 flask --app mock_server/test_backend run
 ```
 
+Will start mock backend on 5000 port
+
+```
+./runner.py --backend-url http://localhost:5000 --logger-level=debug
+```
 ## Logger
 
 You can set logger level and output by ```--logger-level``` (default is error) and ```--logger-output``` (default is empty string == stdout)
