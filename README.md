@@ -26,9 +26,29 @@ flask --app mock_server/test_backend run
 
 ## Logger
 
-You can set logger level and output by --logger-level(default is error) and --logger-output(default is empty string == stdout)
+You can set logger level and output by ```--logger-level``` (default is error) and ```--logger-output``` (default is empty string == stdout)
 Logger levels: debug, info, warning, error, critical
 
+##
+
+Argumets:
+
+```--mock``` returns to server predefined reports
+```--backend-url``` url to server
+```--concurrent``` number of workers
+```--check-interval``` interval time between checking tasks on backend
+```--check-proc-interval``` intervals between checks of process status
+```--timeout``` timeout for started processes
+```--get-api``` api path to task retrieval endpoint
+```--post-api``` api path to task result submition endpoint
+```--login-api``` api path to login endpoint
+```--token-refresh-api``` api path for login token refresh
+```--refresh-time``` time between requests for token refresh
+```--login``` login for authorization, default is dora_explorer
+```--password``` password for authorization, default is dora_explorer
+```--auth``` flag, indecationg that backend uses authorization
+```--logger-level``` logger level, default is info
+```--logger-output``` logger output file, default is "" and prints in stdout
 
 ## Contract
 
