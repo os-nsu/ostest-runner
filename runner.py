@@ -54,9 +54,11 @@ def start_testing(task, network, parser, worker_num):
 
 	result["id"] = task_json["id"]
 
-	logging.debug(f"\npost body: {result}")
-
-	network.post_results(result)
+	logging.debug(f"post body: {result}")
+	try:
+		network.post_results(result)
+	except Exception as e:
+		logging.error(f"Can't send result: {e}")
 
 
 def main_loop(config):

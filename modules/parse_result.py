@@ -10,7 +10,10 @@ class Parser:
 		test_suites = ET.parse(report_path).getroot()
 		test_suit = test_suites.find('testsuite')
 
-		attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 and int(test_suit.get("failures")) == 0 and int(test_suit.get("skipped")) == 0
+		attempt_result["isPassed"] = int(test_suit.get("errors")) == 0 \
+										and int(test_suit.get("failures")) == 0 \
+										and int(test_suit.get("skipped")) == 0 \
+										and int(test_suit.get("tests")) != 0
 		attempt_result["isError"] = int(test_suit.get("errors")) != 0
 		attempt_result["errorDetails"] = "error during task execution" if attempt_result["isError"] else ""
 		attempt_result["duration"] = int(1000 * float(test_suit.get("time")))
@@ -34,6 +37,10 @@ class Parser:
 				if failure is not None:
 					test_result["isPassed"] = False
 					test_result["description"] = failure.text
+				skipped = testcase.find("skipped")
+				if skipped is not None:
+					test_result["isPassed"] = False
+					test_result["description"] = skipped.text
 
 			test_results.append(test_result)
 

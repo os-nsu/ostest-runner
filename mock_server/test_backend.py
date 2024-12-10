@@ -16,16 +16,55 @@ def send_task():
 	task = {}
 	task["id"] = attempt_num
 	task["status"] = "AVAILABLE"
-	if task_count % 2 == 0:
+	if task_count % 7 == 0:
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
 		task["branch"] = "main"
 		task["laboratoryNumber"] = 1
-		task["connectedTests"] = ["test_static_library_compilation", "test_plugin_compilation"]
-	else:
+		task["connectedTests"] = []
+	elif task_count % 7 == 1:
 		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-anton.git"
 		task["branch"] = "develop"
 		task["laboratoryNumber"] = 2
-		task["connectedTests"] = ["test_static_library_compilation", "test_static_library_inclusion", "test_plugin_compilation"]
+		task["connectedTests"] = ["test_files_exist",				## 1 lab
+								  "test_static_library_compilation",## 1 lab
+								  "test_static_library_inclusion", 	## 1 lab
+								  "test_plugin_compilation",		## 1 lab
+								  "test_proxy_with_empty_config",	## 2 lab
+								  "test_proxy_without_config"]		## 2 lab
+	elif task_count % 7 == 2:
+		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
+		task["branch"] = "main"
+		task["laboratoryNumber"] = 1
+		task["connectedTests"] = ["test_static_library_compilation",
+								  "test_static_library_inclusion"] ## have dependency, must skip
+	elif task_count % 7 == 3:
+		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-anton.git"
+		task["branch"] = "develop"
+		task["laboratoryNumber"] = 1
+		task["connectedTests"] = ["test_files_exist", ## 1 lab
+								  "test_directories_exist"]	## 1 lab
+	elif task_count % 7 == 4:
+		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-anton.git"
+		task["branch"] = "develop"
+		task["laboratoryNumber"] = [1]
+	elif task_count % 7 == 5:
+		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
+		task["branch"] = "develop"
+		task["laboratoryNumber"] = [1, 2]
+		task["connectedTests"] = ["test_files_exist",				## 1 lab
+								  "test_static_library_compilation",## 1 lab
+								  "test_static_library_inclusion", 	## 1 lab
+								  "test_plugin_compilation",		## 1 lab
+								  "test_proxy_with_empty_config",	## 2 lab
+								  "test_execution_with_sanitizers"] ## 3 lab
+	elif task_count % 7 == 6:
+		task["repositoryUrl"] = "https://github.com/os-nsu/proxy-grisha.git"
+		task["branch"] = "develop"
+		task["connectedTests"] = ["test_files_exist",				## 1 lab
+								  "test_static_library_compilation",## 1 lab
+								  "test_static_library_inclusion", 	## 1 lab
+								  "test_plugin_compilation",		## 1 lab
+								  "test_proxy_with_empty_config"]	## 2 lab
 	task_count += 1
 	attempt_num += 1
 	return task
