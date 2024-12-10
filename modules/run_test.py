@@ -52,13 +52,20 @@ class TestRunner:
 
 	def __get_parameters(self, task_json, worker_num):
 		connectedTests = task_json["connectedTests"]
-		if len(connectedTests) == 0:
-			connectedTestsStringPattern = ""
-		else:
-			connectedTestsStringPattern = connectedTests[0]
-			for test in connectedTests[1:]:
-				connectedTestsStringPattern += f" or {test}"
+		connectedTestsStringPattern = ""
+		for test_name in connectedTests:
+			connectedTestsStringPattern += f"{test_name} or "
+		connectedTestsStringPattern = connectedTestsStringPattern.rstrip(" or ")
 		logging.debug(f"Connected tests string pattern: {connectedTestsStringPattern}")
+
+		str(task_json.get("laboratoryNumber", ""))
+		labs = task_json.get("laboratoryNumber", "")
+		if type(labs) == list:
+			labs_string = ""
+			for lab_number in labs:
+				labs_string += f"{lab_number} "
+			labs = labs_string.rstrip(" ")
+		laboratoryNumbers = str(labs)
 
 		return {
 			"worker_num": worker_num,
@@ -67,7 +74,7 @@ class TestRunner:
 			"id": str(task_json["id"]),
 			"repositoryUrl": task_json["repositoryUrl"],
 			"branch": task_json["branch"],
-			"laboratoryNumber": str(task_json.get("laboratoryNumber", "")),
+			"laboratoryNumbers": laboratoryNumbers,
 			"connectedTests": connectedTestsStringPattern,
 			"dir_path": os.path.dirname(os.path.realpath(__file__)).rstrip("modules")
 		}
@@ -159,9 +166,9 @@ class TestRunner:
 		if len(self.__params["connectedTests"])!=0:
 			args.append("-k")
 			args.append(f"{self.__params["connectedTests"]}")
-		if len(self.__params["laboratoryNumber"])!=0:
+		if len(self.__params["laboratoryNumbers"])!=0:
 			args.append("--lab-num")
-			args.append(f"{self.__params["laboratoryNumber"]}")
+			args.append(f"{self.__params["laboratoryNumbers"]}")
 
 		cwd = self.__params["dir_path"] + tests_dir
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
