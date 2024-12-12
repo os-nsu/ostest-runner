@@ -30,16 +30,17 @@ class TestRunner:
 				logging.error(f"Stop {message} due to timeout")
 				proc.send_signal(signal.SIGINT)
 				proc.wait()
-				raise RuntimeError(f"Timeout, {message} runned more than:{self.__timeout} seconds")
+				raise RuntimeError(f"Timeout, {message} ran more than:{self.__timeout} seconds")
 			if self.__stop_event.is_set():
-				logging.info(f"Stop {message} due to signal recieve")
+				logging.info(f"Stop {message} due to stop signal")
 				proc.send_signal(signal.SIGINT)
 				proc.wait()
-				raise KeyboardInterrupt("Stop signal recieved")
+				raise KeyboardInterrupt("Stop signal received")
 		return True, proc.stdout, proc.stderr
 
 	def __start_with_signal_watch(self, args, cwd, clean_up, message = ""):
 		try:
+			logging.debug(f"Executing cmd: \"{' '.join(args)}\"")
 			proc = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 		except Exception as e:
 			logging.error(f"Can't start {message}: {e}")
@@ -51,6 +52,22 @@ class TestRunner:
 		return True, out, err
 
 	def __get_parameters(self, task_json, worker_num):
+		connectedTests = task_json.get("connectedTests", [])
+		connectedTestsStringPattern = ""
+		for test_name in connectedTests:
+			connectedTestsStringPattern += f"{test_name} or "
+		connectedTestsStringPattern = connectedTestsStringPattern.rstrip(" or ")
+		logging.debug(f"Connected tests string pattern: {connectedTestsStringPattern}")
+
+		labs = task_json.get("laboratoryNumber", [])
+		laboratoryNumbers = []
+		if isinstance(labs, list):
+			for lab_number in labs:
+				laboratoryNumbers.append(str(lab_number))
+		else:
+			laboratoryNumbers = [str(labs)]
+		logging.debug(f"laboratoryNumbers: {laboratoryNumbers}")
+
 		return {
 			"worker_num": worker_num,
 			"project_dir": task_json["repositoryUrl"].split("/")[-1].rstrip(".git"),
@@ -58,8 +75,8 @@ class TestRunner:
 			"id": str(task_json["id"]),
 			"repositoryUrl": task_json["repositoryUrl"],
 			"branch": task_json["branch"],
-			"laboratoryNumber": str(task_json["laboratoryNumber"]),
-			"connectedTests": task_json["connectedTests"],
+			"laboratoryNumbers": laboratoryNumbers,
+			"connectedTests": connectedTestsStringPattern,
 			"dir_path": os.path.dirname(os.path.realpath(__file__)).rstrip("modules")
 		}
 
@@ -79,7 +96,7 @@ class TestRunner:
 		is_good, _, _ = self.__start_with_signal_watch(args, cwd, clean_up, "git clone repo")
 		if not is_good:
 			raise RuntimeError(f"Clone repo error")
-		return base_repo_dir + f"/{self.__params["project_dir"]}"
+		return base_repo_dir + f"{self.__params["project_dir"]}"
 
 	def __create_report_folder(self):
 		report_dir = f"tests/reports/{self.__params["worker_num"]}/{self.__params["user"]}/{self.__params["project_dir"]}"
@@ -147,6 +164,16 @@ class TestRunner:
 			f"{self.__params["dir_path"]}{repo_dir}",
 			f"--junit-xml={self.__params["dir_path"]}{reports_dir}/report.xml"
 		]
+		if len(self.__params["connectedTests"])!=0:
+			args.append("-k")
+			args.append(f"{self.__params["connectedTests"]}")
+		if len(self.__params["laboratoryNumbers"])!=0:
+			args.append("--lab-num")
+			args += self.__params["laboratoryNumbers"]
+		if self.__timeout != 0:
+			args.append("--proxy_timeout")
+			args.append(f"{int(self.__timeout * 0.9)}")
+
 		cwd = self.__params["dir_path"] + tests_dir
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")

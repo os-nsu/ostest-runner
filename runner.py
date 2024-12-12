@@ -41,7 +41,7 @@ def start_testing(task, network, parser, worker_num):
 	logging.info(f"Received task")
 	task_json = task.json()
 	result = {}
-	runner = TestRunner(task_json, stop_event, worker_num, 0.01, 20)
+	runner = TestRunner(task_json, stop_event, worker_num, config.check_proc_interval, config.timeout)
 	try:
 		xml_path = runner.run_test()
 		result = parser.parse_xml_result(xml_path)
@@ -50,13 +50,15 @@ def start_testing(task, network, parser, worker_num):
 		result = parser.parse_error_result(e)
 	except KeyboardInterrupt as e:
 		logging.info(f"run_test exited with due to {e}")
-		return
+		result = parser.parse_error_result(e)
 
 	result["id"] = task_json["id"]
 
-	logging.debug(f"\npost body: {result}")
-
-	network.post_results(result)
+	logging.debug(f"post body: {result}")
+	try:
+		network.post_results(result)
+	except Exception as e:
+		logging.error(f"Can't send result: {e}")
 
 
 def main_loop(config):
@@ -84,7 +86,7 @@ def main_loop(config):
 				task = network.get_task()
 				if not task:
 					break
-				if task.json()["status"] is not None and task.json()["status"] == "UNAVAILABLE":
+				if task.json().get("status") is not None and task.json()["status"] == "UNAVAILABLE":
 					break
 				if config.mock:
 					futures_store.append(jobs_pool.submit(start_testing_mock, task, network, parser)) ## for backend testing
@@ -134,10 +136,13 @@ def parse_args():
 	parser.add_argument("--backend-url", default="http://localhost:5000")
 	parser.add_argument("--concurrent", type=int, default=2)
 	parser.add_argument("--check-interval", type=int, default=5)
+	parser.add_argument("--check-proc-interval", type=float, default=0.1)
+	parser.add_argument("--timeout", type=int, default=600)
 	parser.add_argument("--get-api", type=str, default="/api/task/available")
 	parser.add_argument("--post-api", type=str, default="/api/task/result")
 	parser.add_argument("--login-api", type=str, default="/api/v1/login")
 	parser.add_argument("--token-refresh-api", type=str, default="/api/v1/auth/refresh")
+	parser.add_argument("--refresh-time", type=int, default=60, help="time between requests for token refresh")
 	parser.add_argument("--login", type=str, default="dora_explorer")
 	parser.add_argument("--password", type=str, default="dora_explorer")
 	parser.add_argument("--auth", action="store_true", help="use if backend has authentication") ## For auth
@@ -150,10 +155,13 @@ def parse_args():
 	config.backend_url = args.backend_url
 	config.concurrent = args.concurrent
 	config.check_interval = args.check_interval
+	config.check_proc_interval = args.check_proc_interval
+	config.timeout = args.timeout
 	config.get_task_api_path = args.get_api
 	config.post_task_api_path = args.post_api
 	config.login_api_path = args.login_api
 	config.token_refresh_api_path = args.token_refresh_api
+	config.refresh_time = args.refresh_time
 	config.login = args.login
 	config.password = args.password
 	config.auth = args.auth ## For auth

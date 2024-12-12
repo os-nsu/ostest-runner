@@ -15,7 +15,7 @@ If backend has auth, use --auth
 You can set login and password with --login and --password, default is dora_explorer for both
 
 ```
-./runner.py --backend-url http://localhost:8080 --auth
+./runner.py --backend-url http://localhost:8080 --auth --logger-level=info
 ```
 
 ### Start mock backend
@@ -24,11 +24,36 @@ You can set login and password with --login and --password, default is dora_expl
 flask --app mock_server/test_backend run
 ```
 
+Will start mock backend on 5000 port
+
+```
+./runner.py --backend-url http://localhost:5000 --logger-level=debug
+```
 ## Logger
 
-You can set logger level and output by --logger-level(default is error) and --logger-output(default is empty string == stdout)
+You can set logger level and output by ```--logger-level``` (default is error) and ```--logger-output``` (default is empty string == stdout)
 Logger levels: debug, info, warning, error, critical
 
+##
+
+Argumets:
+
+ - ```--mock``` returns to server predefined reports
+ - ```--backend-url``` url to server
+ - ```--concurrent``` number of workers
+ - ```--check-interval``` interval time between checking tasks on backend
+ - ```--check-proc-interval``` intervals between checks of process status
+ - ```--timeout``` timeout for started processes
+ - ```--get-api``` api path to task retrieval endpoint
+ - ```--post-api``` api path to task result submition endpoint
+ - ```--login-api``` api path to login endpoint
+ - ```--token-refresh-api``` api path for login token refresh
+ - ```--refresh-time``` time between requests for token refresh
+ - ```--login``` login for authorization, default is dora_explorer
+ - ```--password``` password for authorization, default is dora_explorer
+ - ```--auth``` flag, indecationg that backend uses authorization
+ - ```--logger-level``` logger level, default is info
+ - ```--logger-output``` logger output file, default is "" and prints in stdout
 
 ## Contract
 
@@ -37,7 +62,8 @@ Runner goes to "/api/task/available" and waits for response with following forma
 GET:
 ```json
 {
-    "attempt": 21,
+    "status": "AVAILABLE",
+    "id": 21,
     "repositoryUrl": "https://github.com/os-nsu/proxy-grisha.git",
     "branch": "main",
     "laboratoryNumber": 1,
@@ -53,28 +79,19 @@ After tests have finished it parses xml report and return result to "/api/task/r
 POST:
 ```json
 {
-   "testResults":{
-      "isPassed":false,
-      "isError":false,
-      "errorDetails":"",
-      "duration":"15.866",
-      "testCases": [
-         {
-            "name":"test_build::test_successful_make_clean",
-            "isPassed":true,
-            "description":"",
-            "duration":"0.487",
-            "memoryUsed":1772
-         },
-         {
-            "name":"test_executable::test_run_with_invalid_arguments",
-            "isPassed":false,
-            "description":"steps/proxy_steps.py:25: in run_proxy_with_args\n    result = subprocess.run([proxy_bin_name] + args, cwd=project_dir, check=False, capture_output=True, text=True, timeout=timeout)\n/usr/lib/python3.12/subprocess.py:550: in run\n    stdout, stderr = process.communicate(input, timeout=timeout)\n/usr/lib/python3.12/subprocess.py:1209: in communicate\n    stdout, stderr = self._communicate(input, endtime, timeout)\n/usr/lib/python3.12/subprocess.py:2116: in _communicate\n    self._check_timeout(endtime, orig_timeout, stdout, stderr)\n/usr/lib/python3.12/subprocess.py:1253: in _check_timeout\n    raise TimeoutExpired(\nE   subprocess.TimeoutExpired: Command \\'[\\'/home/borodun/git/os-nsu/proxy-anton/develop/install/proxy\\', \\'--invalid_arg\\']\\' timed out after 1 seconds\n\nDuring handling of the above exception, another exception occurred:\ntests/test_executable.py:46: in test_run_with_invalid_arguments\n    result = run_proxy_with_args(project_dir, proxy_bin_name, [\\'--invalid_arg\\'], timeout=proxy_timeout)\nsteps/proxy_steps.py:27: in run_proxy_with_args\n    pytest.fail(f\"Proxy not finished in {timeout} seconds.\")\nE   Failed: Proxy not finished in 1 seconds.",
-            "duration":"1.003",
-            "memoryUsed":1491
-         }
-      ]
-   },
-   "attempt":21
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "isPassed": true,
+  "duration": 0,
+  "testResults": [
+    {
+      "isPassed": true,
+      "description": "string",
+      "memoryUsed": 0,
+      "duration": 0,
+      "name": "string"
+    }
+  ],
+  "isError": true,
+  "errorDetails": "string"
 }
 ```
