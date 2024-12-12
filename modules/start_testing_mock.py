@@ -18,7 +18,7 @@ def start_testing_mock(task, network, parser): ## For backend testing
 	elif task_json["repositoryUrl"] == "https://github.com/os-nsu/proxy-anton.git":
 		result = parser.parse_xml_result(xml_path2)
 
-	result["attempt"] = task_json["attempt"]
+	result["id"] = task_json["id"]
 
 	logging.info(f"post body: {result}")
 
