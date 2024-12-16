@@ -190,16 +190,16 @@ class TestRunner:
 		except OSError as e:
 			logging.error(f"Cannot open {stdout_id_output_dir} file")
 			raise RuntimeError(f"Cannot open {stdout_id_output_dir} file") from e
+		try:
+			with open(stderr_id_output_dir, "w") as outfile:
+				outfile.write(err.read())
+		except IOError as e:
+			logging.error(f"Error while writing {stderr_id_output_dir} file")
+			raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
+		except OSError as e:
+			logging.error(f"Cannot open {stderr_id_output_dir} file")
+			raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
 		if not is_good:
-			try:
-				with open(stderr_id_output_dir, "w") as outfile:
-					outfile.write(err.read())
-			except IOError as e:
-				logging.error(f"Error while writing {stderr_id_output_dir} file")
-				raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
-			except OSError as e:
-				logging.error(f"Cannot open {stderr_id_output_dir} file")
-				raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
 			raise RuntimeError("Error while running tests")
 		return f"{reports_dir}/report.xml"
 
