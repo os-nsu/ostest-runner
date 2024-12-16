@@ -41,15 +41,15 @@ def start_testing(task, network, parser, worker_num):
 	logging.info(f"Received task")
 	task_json = task.json()
 	result = {}
-	runner = TestRunner(task_json, stop_event, worker_num, config.check_proc_interval, config.timeout)
+	runner = TestRunner(task_json, stop_event, worker_num, config.check_proc_interval, config.timeout, config.proxy_timeout)
 	try:
 		xml_path = runner.run_test()
 		result = parser.parse_xml_result(xml_path)
 	except RuntimeError as e:
-		logging.error(f"run_test exited with due to {e}")
+		logging.error(f"run_test exited due to {e}")
 		result = parser.parse_error_result(e)
 	except KeyboardInterrupt as e:
-		logging.info(f"run_test exited with due to {e}")
+		logging.info(f"run_test exited due to {e}")
 		result = parser.parse_error_result(e)
 
 	result["id"] = task_json["id"]
@@ -138,6 +138,7 @@ def parse_args():
 	parser.add_argument("--check-interval", type=int, default=5)
 	parser.add_argument("--check-proc-interval", type=float, default=0.1)
 	parser.add_argument("--timeout", type=int, default=600)
+	parser.add_argument("--proxy-timeout", type=int, default=10)
 	parser.add_argument("--get-api", type=str, default="/api/task/available")
 	parser.add_argument("--post-api", type=str, default="/api/task/result")
 	parser.add_argument("--login-api", type=str, default="/api/v1/login")
@@ -157,6 +158,7 @@ def parse_args():
 	config.check_interval = args.check_interval
 	config.check_proc_interval = args.check_proc_interval
 	config.timeout = args.timeout
+	config.proxy_timeout = args.proxy_timeout
 	config.get_task_api_path = args.get_api
 	config.post_task_api_path = args.post_api
 	config.login_api_path = args.login_api
