@@ -54,6 +54,7 @@ Argumets:
  - ```--auth``` flag, indecationg that backend uses authorization
  - ```--logger-level``` logger level, default is info
  - ```--logger-output``` logger output file, default is "" and prints in stdout
+ - ```--proxy-timeout``` timeout for one test proxy
 
 ## Contract
 

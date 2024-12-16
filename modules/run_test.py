@@ -8,12 +8,13 @@ import logging
 import threading
 
 class TestRunner:
-	def __init__(self, task_json, stop_event, worker_num, wait_intervals=0.01, timeout=0):
+	def __init__(self, task_json, stop_event, worker_num, wait_intervals=0.01, timeout=0, proxy_timeout=10):
 		self.__params = self.__get_parameters(task_json, worker_num)
 		self.__cleaners = []
 		self.__wait_intervals = wait_intervals
 		self.__timeout = timeout
 		self.__stop_event = stop_event
+		self.__proxy_timeout = proxy_timeout
 
 	def __stop_event_watcher(self, proc, message = ""):
 		wait = True
@@ -170,9 +171,9 @@ class TestRunner:
 		if len(self.__params["laboratoryNumbers"])!=0:
 			args.append("--lab-num")
 			args += self.__params["laboratoryNumbers"]
-		if self.__timeout != 0:
+		if self.__proxy_timeout != 0:
 			args.append("--proxy_timeout")
-			args.append(f"{int(self.__timeout * 0.9)}")
+			args.append(f"{int(self.__proxy_timeout)}")
 
 		cwd = self.__params["dir_path"] + tests_dir
 		logging.debug(f"tests start worker {self.__params["worker_num"]}")
@@ -189,16 +190,16 @@ class TestRunner:
 		except OSError as e:
 			logging.error(f"Cannot open {stdout_id_output_dir} file")
 			raise RuntimeError(f"Cannot open {stdout_id_output_dir} file") from e
+		try:
+			with open(stderr_id_output_dir, "w") as outfile:
+				outfile.write(err.read())
+		except IOError as e:
+			logging.error(f"Error while writing {stderr_id_output_dir} file")
+			raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
+		except OSError as e:
+			logging.error(f"Cannot open {stderr_id_output_dir} file")
+			raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
 		if not is_good:
-			try:
-				with open(stderr_id_output_dir, "w") as outfile:
-					outfile.write(err.read())
-			except IOError as e:
-				logging.error(f"Error while writing {stderr_id_output_dir} file")
-				raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
-			except OSError as e:
-				logging.error(f"Cannot open {stderr_id_output_dir} file")
-				raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
 			raise RuntimeError("Error while running tests")
 		return f"{reports_dir}/report.xml"
 
