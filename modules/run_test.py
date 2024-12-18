@@ -23,9 +23,9 @@ class TestRunner:
 			time.sleep(self.__wait_intervals)
 			if proc.poll() is not None:
 				proc.wait()
-				#if proc.returncode != 0:   ### Tests exit with non-zero codes
-				#	logging.error(f"Error in {message}:\n{proc.stderr.read()}")
-				#	return False, proc.stdout, proc.stderr
+				if message == "tests run" and (proc.returncode != 0 and proc.returncode != 1):
+					logging.error(f"Error in {message}, process ended with code:{proc.returncode}")
+					raise RuntimeError(f"Error in {message}, process ended with code:{proc.returncode}")
 				wait = False
 			if self.__timeout != 0 and time.time() - start_time > self.__timeout:
 				logging.error(f"Stop {message} due to timeout")
