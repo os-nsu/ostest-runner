@@ -23,9 +23,9 @@ class TestRunner:
 			time.sleep(self.__wait_intervals)
 			if proc.poll() is not None:
 				proc.wait()
-				#if proc.returncode != 0:   ### Tests exit with non-zero codes
-				#	logging.error(f"Error in {message}:\n{proc.stderr.read()}")
-				#	return False, proc.stdout, proc.stderr
+				if message == "tests run" and (proc.returncode != 0 and proc.returncode != 1):
+					logging.error(f"Error in {message}, process ended with code:{proc.returncode}")
+					raise RuntimeError(f"Error in {message}, process ended with code:{proc.returncode}")
 				wait = False
 			if self.__timeout != 0 and time.time() - start_time > self.__timeout:
 				logging.error(f"Stop {message} due to timeout")
@@ -39,10 +39,11 @@ class TestRunner:
 				raise KeyboardInterrupt("Stop signal received")
 		return True, proc.stdout, proc.stderr
 
-	def __start_with_signal_watch(self, args, cwd, clean_up, message = ""):
+	def __start_with_signal_watch(self, args, cwd, clean_up, message = "", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
 		try:
 			logging.debug(f"Executing cmd: \"{' '.join(args)}\"")
-			proc = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+			proc = subprocess.Popen(args, cwd=cwd, stdout=stdout, stderr=stderr, text=True)
+			#proc = subprocess.Popen(args, cwd=cwd, text=True)
 		except Exception as e:
 			logging.error(f"Can't start {message}: {e}")
 			raise RuntimeError(f"Can't start {message}: {e}") from e
@@ -175,30 +176,24 @@ class TestRunner:
 			args.append("--proxy_timeout")
 			args.append(f"{int(self.__proxy_timeout)}")
 
-		cwd = self.__params["dir_path"] + tests_dir
-		logging.debug(f"tests start worker {self.__params["worker_num"]}")
-		is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run")
-		logging.debug(f"tests end worker {self.__params["worker_num"]}")
 		stdout_id_output_dir = f"{reports_dir}/stdout_output_{self.__params["id"]}"
 		stderr_id_output_dir = f"{reports_dir}/stderr_output_{self.__params["id"]}"
+
+		cwd = self.__params["dir_path"] + tests_dir
+		logging.debug(f"tests start worker {self.__params["worker_num"]}")
 		try:
-			with open(stdout_id_output_dir, "w") as outfile:
-				outfile.write(out.read())
+			with open(stdout_id_output_dir, "w") as out_file:
+				with open(stderr_id_output_dir, "w") as err_file:
+					is_good, out, err = self.__start_with_signal_watch(args, cwd, clean_up, "tests run", out_file, err_file)
 		except IOError as e:
-			logging.error(f"Error while writing {stdout_id_output_dir} file")
-			raise RuntimeError(f"Error while writing {stdout_id_output_dir} file") from e
+			logging.error(f"Error while writing file")
+			raise RuntimeError(f"Error while writing file") from e
 		except OSError as e:
-			logging.error(f"Cannot open {stdout_id_output_dir} file")
-			raise RuntimeError(f"Cannot open {stdout_id_output_dir} file") from e
-		try:
-			with open(stderr_id_output_dir, "w") as outfile:
-				outfile.write(err.read())
-		except IOError as e:
-			logging.error(f"Error while writing {stderr_id_output_dir} file")
-			raise RuntimeError(f"Error while writing {stderr_id_output_dir} file") from e
-		except OSError as e:
-			logging.error(f"Cannot open {stderr_id_output_dir} file")
-			raise RuntimeError(f"Cannot open {stderr_id_output_dir} file") from e
+			logging.error(f"Cannot open file")
+			raise RuntimeError(f"Cannot open file") from e
+		logging.debug(f"tests end worker {self.__params["worker_num"]}")
+
+
 		if not is_good:
 			raise RuntimeError("Error while running tests")
 		return f"{reports_dir}/report.xml"
