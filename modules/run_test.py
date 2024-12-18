@@ -39,7 +39,7 @@ class TestRunner:
 				raise KeyboardInterrupt("Stop signal received")
 		return True, proc.stdout, proc.stderr
 
-	def __start_with_signal_watch(self, args, cwd, clean_up, message = "", stdout=subprocess.PIPE, stderr=subprocess.PIPE):
+	def __start_with_signal_watch(self, args, cwd, clean_up, message = "", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL):
 		try:
 			logging.debug(f"Executing cmd: \"{' '.join(args)}\"")
 			proc = subprocess.Popen(args, cwd=cwd, stdout=stdout, stderr=stderr, text=True)
